@@ -47,7 +47,7 @@ module.exports = {
           port: 80,
         });
       },
-    },
+    }, 
     {
       src: '/media/.*',
       dest: (req, res) => {

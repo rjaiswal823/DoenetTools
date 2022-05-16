@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   dev:
-    image: lyanthropos/doenet_test:snowpack-dev
+    image: vite-container
     ports:
       - 80:80
     volumes:
