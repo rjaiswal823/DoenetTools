@@ -9,7 +9,6 @@ import {
 import axios from 'axios';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { useToast, toastType } from '../Toast';
-// '@Toast';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
