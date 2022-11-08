@@ -12,166 +12,156 @@ const Label = styled.div`
 `;
 
 export default function DateTime(props) {
-  const [value, setValue] = useState(props.value);
-  const [lastValid, setLastValid] = useState(props.value);
-  const inputRef = useRef(null);
-  const [cursorStart, setCursorStart] = useState(0);
-  const [cursorEnd, setCursorEnd] = useState(0);
+  // const [value, setValue] = useState(props.value);
+  // const [lastValid, setLastValid] = useState(props.value);
+  // const inputRef = useRef(null);
+  // const [cursorStart, setCursorStart] = useState(0);
+  // const [cursorEnd, setCursorEnd] = useState(0);
 
-  let borderColor = props.alert
-    ? '2px solid var(--mainRed)'
-    : 'var(--mainBorder)';
-  borderColor = props.disabled ? '2px solid var(--mainGray)' : borderColor;
-  let cursorStyle = props.disabled ? 'not-allowed' : 'auto';
+  // let borderColor = props.alert
+  //   ? '2px solid var(--mainRed)'
+  //   : 'var(--mainBorder)';
+  // borderColor = props.disabled ? '2px solid var(--mainGray)' : borderColor;
+  // let cursorStyle = props.disabled ? 'not-allowed' : 'auto';
+  // let width = props.width ? props.width : '170px';
 
-  var containerWidth = "170px";
-  var inputWidth = "170px";
-  if (props.width) {
-    if (props.width === "menu") {
-      containerWidth = 'var(--menuWidth)';
-      inputWidth = 'var(--menuWidth)';
-      if (props.label) {
-        containerWidth = 'var(--menuWidth)';
-        inputWidth = '100%';
-      }
-    } 
-  };
-  useEffect(() => {
-    //todo try lastValid update
-    setLastValid(props.value);
-    setValue(props.value);
-  }, [props]);
+  // useEffect(() => {
+  //   //todo try lastValid update
+  //   setLastValid(props.value);
+  //   setValue(props.value);
+  // }, [props]);
 
-  useEffect(() => {
-    inputRef.current.selectionStart = cursorStart;
-    inputRef.current.selectionEnd = cursorEnd;
-  });
+  // useEffect(() => {
+  //   inputRef.current.selectionStart = cursorStart;
+  //   inputRef.current.selectionEnd = cursorEnd;
+  // });
 
-  let placeholder = '';
+  // let placeholder = '';
 
-  if (props.datePicker !== false) {
-    placeholder = 'mm/dd/yyyy';
-  }
+  // if (props.datePicker !== false) {
+  //   placeholder = 'mm/dd/yyyy';
+  // }
 
-  if (props.timePicker !== false && props.precision === 'seconds') {
-    placeholder += ' hh:mm:ss';
-  } else if (props.timePicker !== false) {
-    placeholder += ' hh:mm';
-  }
+  // if (props.timePicker !== false && props.precision === 'seconds') {
+  //   placeholder += ' hh:mm:ss';
+  // } else if (props.timePicker !== false) {
+  //   placeholder += ' hh:mm';
+  // }
 
-  placeholder = props.placeholder ? props.placeholder : placeholder;
+  // placeholder = props.placeholder ? props.placeholder : placeholder;
 
-  let inputProps = {
-    // disabled: props.disabled === true ? true : false,
-    placeholder: placeholder,
-  };
+  // let inputProps = {
+  //   // disabled: props.disabled === true ? true : false,
+  //   placeholder: placeholder,
+  // };
 
-  const renderInput = (propsRI, openCalendar, closeCalendar) => {
-    return (
-      <div style={{width: containerWidth}}>
-        {props.label ? (
-          <Label id="checkbox-label" vertical={props.vertical}>
-            {props.label}
-          </Label>
-        ) : null}
-        <input
-          {...propsRI}
-          style={{
-            border: borderColor,
-            cursor: cursorStyle,
-            width: inputWidth,
-            color: 'var(--canvastext)',
-            backgroundColor: 'var(--canvas)',
-            ...props.style,
-          }}
-          ref={inputRef}
-          aria-labelledby="checkbox-label"
-          aria-haspopup="true"
-          data-test={props.dataTest}
-          onChange={(e) => {
-            setCursorStart(e.target.selectionStart);
-            setCursorEnd(e.target.selectionEnd);
-            propsRI.onChange(e);
-          }}
-          onClick={(e) => {
-            propsRI.onClick(e);
-          }}
-          onKeyDown={(e) => {
-            if (props.onKeyDown) {
-              props.onKeyDown(e);
-            }
-            if (e.key === 'Enter') {
-              closeCalendar();
-              e.target.blur();
-            }
-          }}
-        />
-      </div>
-    );
-  };
+  // const renderInput = (propsRI, openCalendar, closeCalendar) => {
+  //   return (
+  //     <div>
+  //       {props.label ? (
+  //         <Label id="checkbox-label" vertical={props.vertical}>
+  //           {props.label}
+  //         </Label>
+  //       ) : null}
+  //       <input
+  //         {...propsRI}
+  //         style={{
+  //           border: borderColor,
+  //           cursor: cursorStyle,
+  //           width: width,
+  //           color: 'var(--canvastext)',
+  //           backgroundColor: 'var(--canvas)',
+  //           ...props.style,
+  //         }}
+  //         ref={inputRef}
+  //         aria-labelledby="checkbox-label"
+  //         aria-haspopup="true"
+  //         data-test={props.dataTest}
+  //         onChange={(e) => {
+  //           setCursorStart(e.target.selectionStart);
+  //           setCursorEnd(e.target.selectionEnd);
+  //           propsRI.onChange(e);
+  //         }}
+  //         onClick={(e) => {
+  //           propsRI.onClick(e);
+  //         }}
+  //         onKeyDown={(e) => {
+  //           if (props.onKeyDown) {
+  //             props.onKeyDown(e);
+  //           }
+  //           if (e.key === 'Enter') {
+  //             closeCalendar();
+  //             e.target.blur();
+  //           }
+  //         }}
+  //       />
+  //     </div>
+  //   );
+  // };
 
-  if (props.disabled) {
-    return (
-      <input
-        ref={inputRef}
-        onClick={props.disabledOnClick}
-        value={props.disabledText}
-        readOnly
-        data-test={props.dataTest}
-        // disabled
-        style={{
-          cursor: 'not-allowed',
-          //cs color: 'var(--canvastext)',
-          color: 'var(--canvastext)',
-          backgroundColor: 'var(--canvas)',
-          height: '18px',
-          width: inputWidth,
-          border: '2px solid var(--mainGray)',
-          borderRadius: 'var(--mainBorderRadius)',
-          ...props.style,
-        }}
-      />
-    );
-  }
-  // console.log('value:', value);
-  // console.log('lastValid:', lastValid);
-  return (
-    <Datetime
-      renderInput={renderInput}
-      value={value}
-      dateFormat={props.datePicker === false ? false : true}
-      timeFormat={
-        props.precision === 'seconds' && props.timePicker !== false
-          ? 'hh:mm:ss a'
-          : props.timePicker === false
-          ? false
-          : true
-      }
-      inputProps={inputProps}
-      onChange={(dateObjectOrString) => {
-        setValue(dateObjectOrString);
-        if (props.onChange) {
-          props.onChange({
-            valid: typeof dateObjectOrString !== 'string',
-            value: dateObjectOrString,
-          });
-        }
-      }}
-      onClose={(_) => {
-        let valid = typeof value !== 'string';
-        if (valid) {
-          setLastValid(value);
-        } else {
-          setValue(lastValid);
-        }
+  // if (props.disabled) {
+  //   return (
+  //     <input
+  //       ref={inputRef}
+  //       onClick={props.disabledOnClick}
+  //       value={props.disabledText}
+  //       readOnly
+  //       data-test={props.dataTest}
+  //       // disabled
+  //       style={{
+  //         cursor: 'not-allowed',
+  //         //cs color: 'var(--canvastext)',
+  //         color: 'var(--canvastext)',
+  //         backgroundColor: 'var(--canvas)',
+  //         height: '18px',
+  //         width: '170px',
+  //         border: '2px solid var(--mainGray)',
+  //         borderRadius: 'var(--mainBorderRadius)',
+  //         ...props.style,
+  //       }}
+  //     />
+  //   );
+  // }
+  // // console.log('value:', value);
+  // // console.log('lastValid:', lastValid);
+  // return (
+  //   <Datetime
+  //     renderInput={renderInput}
+  //     value={value}
+  //     dateFormat={props.datePicker === false ? false : true}
+  //     timeFormat={
+  //       props.precision === 'seconds' && props.timePicker !== false
+  //         ? 'hh:mm:ss a'
+  //         : props.timePicker === false
+  //         ? false
+  //         : true
+  //     }
+  //     inputProps={inputProps}
+  //     onChange={(dateObjectOrString) => {
+  //       setValue(dateObjectOrString);
+  //       if (props.onChange) {
+  //         props.onChange({
+  //           valid: typeof dateObjectOrString !== 'string',
+  //           value: dateObjectOrString,
+  //         });
+  //       }
+  //     }}
+  //     onClose={(_) => {
+  //       let valid = typeof value !== 'string';
+  //       if (valid) {
+  //         setLastValid(value);
+  //       } else {
+  //         setValue(lastValid);
+  //       }
 
-        if (props.onBlur) {
-          props.onBlur({
-            valid: valid,
-            value: value,
-          });
-        }
-      }}
-    />
-  );
+  //       if (props.onBlur) {
+  //         props.onBlur({
+  //           valid: valid,
+  //           value: value,
+  //         });
+  //       }
+  //     }}
+  //   />
+  // );
+  return <p> Hello World! </p>;
 }
