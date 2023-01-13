@@ -33,6 +33,9 @@ import CollapseSection from '../../_reactComponents/PanelHeaderComponents/Collap
 import ProgressBar from '../../_reactComponents/PanelHeaderComponents/ProgressBar.jsx';
 import RelatedItems from '../../_reactComponents/PanelHeaderComponents/RelatedItems.jsx';
 import Checkbox from '../../_reactComponents/PanelHeaderComponents/Checkbox.jsx';
+import Tooltip from '../../_reactComponents/PanelHeaderComponents/Tooltip.jsx';
+import DueDateBar from '../../_reactComponents/PanelHeaderComponents/DueDateBar.jsx';
+import { useState } from 'react';
 
 // === HOW TO ADD TO UI DOCS ===
 // 1. Import the component in the COMPONENT IMPORTS SECTION above
@@ -72,7 +75,9 @@ const List = styled.ul`
   color: var(--canvastext);
 `;
 
-export default function attempt() {
+export default function Attempt() {
+  const [actionResult,setActionResult] = useState("");
+
   const font = () => {};
   const vertical = () => {};
   const verticalLabel = () => {};
@@ -97,13 +102,13 @@ export default function attempt() {
         {
           name: 'Width - Menu Panel',
           propPreview: '<ActionButton width="menu" />',
-          propCode: { width: 'menu' },
+          propCode: { width: 'menu', dataTest:"ActionButton width example"},
           description: 'Sets width to fill menu panel width',
         },
         {
           name: 'Value',
           propPreview: '<ActionButton value="Edit"/>',
-          propCode: { value: 'Edit' },
+          propCode: { value: 'Edit', dataTest:"ActionButton Edit Value example" },
           description: 'Changes the text',
         },
         {
@@ -142,8 +147,8 @@ export default function attempt() {
         {
           name: 'onClick',
           propPreview:
-            '<ActionButton onClick={() => console.log("clicked")} />',
-          propCode: { onClick: () => console.log('clicked') },
+            '<ActionButton onClick={() => setActionResult("ActionButton clicked")} />',
+          propCode: { dataTest:"ActionButton click example", onClick: () => setActionResult("ActionButton clicked") },
           description: 'Function called when button is clicked',
         },
         {
@@ -192,7 +197,7 @@ export default function attempt() {
           name: 'Vertical Label',
           propPreview: '<ActionButtonGroup label="What: " verticalLabel/>',
           propCode: { label: 'What: ', verticalLabel },
-          description: 'Adds label to componenet on top',
+          description: 'Adds label to component on top',
         },
       ],
     },
@@ -451,8 +456,8 @@ export default function attempt() {
       props: [
         {
           name: 'Width',
-          propPreview: '<DateTime width="300px" />',
-          propCode: { width: '300px' },
+          propPreview: '<DateTime width="menu" />',
+          propCode: { width: 'menu' },
           description: 'Sets width to fill menu panel width',
         },
         {
@@ -713,6 +718,39 @@ export default function attempt() {
       ],
     },
     {
+      name: 'Due Date Bar',
+      id: 'duedatebar',
+      code: DueDateBar,
+      codePreview: '<DueDateBar startDate={new Date("2022-01-01 00:00:00")} dueDate={new Date("2025-12-31 23:59:59")} />',
+      req_props: {
+        startDate: new Date("2022-01-01 00:00:00"),
+        endDate: new Date("2025-12-31 23:59:59")
+      },
+      req_children: null,
+      use: 'To track if the assignment is completed, in progress, or overdue. Required props are startDate and endDate.',
+      props: [
+        {
+          name: 'Case: Overdue',
+          propPreview: '<DueDateBar startDate={new Date("2022-01-01 00:00:00")} dueDate={new Date("2022-11-01 23:59:59")} />',
+          propCode: { 
+            startDate: new Date("2022-01-01 00:00:00"),
+            endDate: new Date("2022-11-01 23:59:59")
+          },
+          description: 'Set the due date bar to overdue state.',
+        },
+        {
+          name: 'isCompleted',
+          propPreview: '<DueDateBar isCompleted startDate={new Date("2022-01-01 00:00:00")} dueDate={new Date("2025-12-31 23:59:59")} />',
+          propCode: { 
+            isCompleted: true,
+            startDate: new Date("2022-01-01 00:00:00"),
+            endDate: new Date("2025-12-31 23:59:59")
+          },
+          description: 'Set the due date bar to completed state.',
+        },
+      ],
+    },
+    {
       name: 'Increment',
       id: 'increment',
       code: Increment,
@@ -722,6 +760,12 @@ export default function attempt() {
       use: 'Text input with increment and decrement buttons. Also has dropdown menu to select given values',
       props: [
         {
+          name: 'Width',
+          propPreview: '<Increment width="menu" />',
+          propCode: { width: 'menu' },
+          description: 'Sets width to fill menu panel width',
+        },
+        {
           name: 'Font',
           propPreview: '<Increment font/>',
           propCode: { font },
@@ -729,8 +773,8 @@ export default function attempt() {
         },
         {
           name: 'Min',
-          propPreview: '<Increment min={0}/>',
-          propCode: { min: 0 },
+          propPreview: '<Increment min={-1} />',
+          propCode: { min: -1 },
           description:
             'Restricts the menu to have values greater or equal to min',
         },
@@ -762,16 +806,6 @@ export default function attempt() {
           },
           description:
             'Restricts the values to the ones in the menu. If all the values numeric and value entered not in the given values, the value is set to the closest one.',
-        },
-        {
-          name: 'Max Height',
-          propPreview:
-            '<Increment values = {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]} maxHeight = "80px" />',
-          propCode: {
-            values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-            maxHeight: '80px',
-          },
-          description: 'Sets the maxHeight for the dropdown menu.',
         },
         {
           name: 'Label',
@@ -816,13 +850,6 @@ export default function attempt() {
           description: 'Add a placeholder for the field',
         },
         {
-          name: 'Deactivate Dropdown',
-          propPreview: '<Increment deactivateDropdown />',
-          propCode: { deactivateDropdown: true },
-          description:
-            'Deactivates the default dropdown when the increment menu is clicked.',
-        },
-        {
           name: 'Disabled',
           propPreview: '<Increment disabled />',
           propCode: { disabled: true },
@@ -856,7 +883,7 @@ export default function attempt() {
           propPreview: '<ProgressBar width=400 />',
           propCode: { width: 400, progress: 0.4 },
           description:
-            'Changes the width of the component in px; pass in the number without any units',
+            'Changes the width of the component in px; pass in the number without any units; default width is var(--menuWidth)=200px which must be updated manually',
         },
         {
           name: 'Progress Label',
@@ -1206,7 +1233,7 @@ export default function attempt() {
         {
           name: 'Submit Button Text',
           propPreview: '<Form submitButton="add Text" />',
-          propCode: { submitButton: 'add Text' },
+          propCode: { submitButton: 'Add Text Here' },
           description: 'Changes the button text',
         },
         {
@@ -1381,6 +1408,25 @@ export default function attempt() {
           propCode: { vertical },
           description: 'Aligns buttons vertically',
         },
+      ],
+    },
+    {
+      name: 'Tooltip',
+      id: 'tooltip',
+      code: Tooltip,
+      codePreview: '<Tooltip/>',
+      req_props: null,
+      req_children: null,
+      use: 'Adds description of elements',
+      props: [
+        {name: 'Icon', 
+        propPreview: '<Tooltip  icon={<FontAwesomeIcon icon={faCode}/>}> />',
+        propCode: {icon: <FontAwesomeIcon icon={faCode} />},
+        description: 'See Style Guide for more info on how to use FontAwesomeIcons. Changes icon in circle',},
+        {name: 'Text',
+        propPreview: '<Tooltip text="This is the tooltip for a tooltip"/>',
+        propCode: {text: "This is the tooltip for a tooltip"},
+        description: 'Changes text in textbox'},    
       ],
     },
     {
@@ -1773,6 +1819,10 @@ export default function attempt() {
         <NavBar>
           <div style={{ marginLeft: '10px' }}>
             <h1>Components</h1>
+            {actionResult == "" ? null : <>
+            <p data-test="action result">{actionResult}</p>
+            <button onClick={()=>setActionResult("")} data-test="clear action result">Clear actionResult</button>
+            </>}
             {/* <SearchBar width='110px'/> */}
           </div>
           <h3>
@@ -1782,7 +1832,7 @@ export default function attempt() {
           </h3>
           <List>
             {dataStructure.map(({ name, id }) => (
-              <li key={id}>
+              <li key={id} data-test={`componentLink${id}`}>
                 <Link to={`component/${id}`} style={{ color: 'black' }}>
                   {name}
                 </Link>

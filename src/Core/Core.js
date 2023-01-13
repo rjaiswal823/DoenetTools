@@ -7,7 +7,7 @@ import { createUniqueName, getNamespaceFromName } from './utils/naming';
 import * as serializeFunctions from './utils/serializedStateProcessing';
 import { deepCompare, deepClone } from './utils/deepFunctions';
 import createStateProxyHandler from './StateProxyHandler';
-import { convertAttributesForComponentType, postProcessCopy } from './utils/copy';
+import { convertAttributesForComponentType, postProcessCopy, verifyReplacementsMatchSpecifiedType } from './utils/copy';
 import { flattenDeep, mapDeep } from './utils/array';
 import { DependencyHandler } from './Dependencies';
 import { preprocessMathInverseDefinition } from './utils/math';
@@ -19,6 +19,7 @@ import createComponentInfoObjects from './utils/componentInfoObjects';
 import { get as idb_get, set as idb_set } from 'idb-keyval';
 import { toastType } from '../Tools/_framework/ToastTypes';
 import axios from 'axios';
+import { gatherVariantComponents, getNumberOfVariants } from './utils/variants';
 
 // string to componentClass: this.componentInfoObjects.allComponentClasses["string"]
 // componentClass to string: componentClass.componentType
@@ -200,7 +201,9 @@ export default class Core {
     this.saveStateToDBTimerId = null;
 
     // rendererState the current state of each renderer, keyed by componentName
-    this.rendererState = {};
+    this.rendererState = {
+      __componentNeedingUpdateValue: null
+    };
 
     // rendererVariablesByComponentType is a description 
     // of the which variables are sent to the renderers,
@@ -235,10 +238,10 @@ export default class Core {
 
     // console.timeEnd('serialize doenetML');
 
-    let numVariants = serializeFunctions.getNumberOfVariants({
+    let numVariants = getNumberOfVariants({
       serializedComponent: serializedComponents[0],
       componentInfoObjects: this.componentInfoObjects
-    }).numberOfVariantsPreIgnore;
+    }).numberOfVariants;
 
 
     if (!this.requestedVariant) {
@@ -318,7 +321,6 @@ export default class Core {
     this.coreInfo = {
       generatedVariantString: this.canonicalGeneratedVariantString,
       allPossibleVariants: deepClone(await this.document.sharedParameters.allPossibleVariants),
-      variantIndicesToIgnore: deepClone(await this.document.sharedParameters.variantIndicesToIgnore),
       rendererTypesInDocument: deepClone(this.rendererTypesInDocument),
       documentToRender: this.documentRendererInstructions,
     };
@@ -605,8 +607,12 @@ export default class Core {
 
     let newChildrenInstructions = {};
 
+    // copy components with changed children and reset for next time
+    let componentsWithChangedChildrenToRenderInProgress = this.componentsWithChangedChildrenToRender;
+    this.componentsWithChangedChildrenToRender = new Set([]);
+
     //TODO: Figure out what we need from here
-    for (let componentName of this.componentsWithChangedChildrenToRender) {
+    for (let componentName of componentsWithChangedChildrenToRenderInProgress) {
       if (componentName in this.componentsToRender) {
         // check to see if current children who render are
         // different from last time rendered
@@ -665,7 +671,8 @@ export default class Core {
             if (child.componentName) {
               let deletedNames = this.deleteFromComponentsToRender({
                 componentName: child.componentName,
-                recurseToChildren: true
+                recurseToChildren: true,
+                componentsWithChangedChildrenToRenderInProgress
               });
               deletedRenderers.push(...deletedNames);
             }
@@ -677,7 +684,7 @@ export default class Core {
             for (let [ind, child] of unproxiedComponent.activeChildren.entries()) {
               if (indicesToRender.includes(ind)) {
                 if (child.rendererType) {
-                  let results = await this.initializeRenderedComponentInstruction(child);
+                  let results = await this.initializeRenderedComponentInstruction(child, componentsWithChangedChildrenToRenderInProgress);
                   childrenToRender.push(results.componentToRender);
                   rendererStatesToUpdate.push(...results.rendererStatesToUpdate);
                 } else if (typeof child === "string") {
@@ -693,7 +700,7 @@ export default class Core {
 
           newChildrenInstructions[componentName] = childrenToRender;
 
-          this.componentsWithChangedChildrenToRender.delete(componentName);
+          componentsWithChangedChildrenToRenderInProgress.delete(componentName);
 
           if (!componentNamesToUpdate.includes(componentName)) {
             componentNamesToUpdate.push(componentName);
@@ -704,9 +711,6 @@ export default class Core {
       }
     }
 
-
-    // reset for next time
-    this.componentsWithChangedChildrenToRender = new Set([]);
 
 
     for (let componentName of componentNamesToUpdate) {
@@ -765,7 +769,7 @@ export default class Core {
 
   }
 
-  async initializeRenderedComponentInstruction(component) {
+  async initializeRenderedComponentInstruction(component, componentsWithChangedChildrenToRenderInProgress = new Set([])) {
 
     if (component.rendererType === undefined) {
       return;
@@ -806,7 +810,7 @@ export default class Core {
       for (let [ind, child] of component.activeChildren.entries()) {
         if (indicesToRender.includes(ind)) {
           if (child.rendererType) {
-            let results = await this.initializeRenderedComponentInstruction(child);
+            let results = await this.initializeRenderedComponentInstruction(child, componentsWithChangedChildrenToRenderInProgress);
             childrenToRender.push(results.componentToRender);
             rendererStatesToUpdate.push(...results.rendererStatesToUpdate);
             rendererStatesToForceUpdate.push(...results.rendererStatesToForceUpdate);
@@ -838,7 +842,7 @@ export default class Core {
       childrenInstructions: childrenToRender,
     }
 
-    this.componentsWithChangedChildrenToRender.delete(componentName);
+    componentsWithChangedChildrenToRenderInProgress.delete(componentName);
 
 
     let requestActions = {};
@@ -878,6 +882,7 @@ export default class Core {
   deleteFromComponentsToRender({
     componentName,
     recurseToChildren = true,
+    componentsWithChangedChildrenToRenderInProgress
   }) {
     let deletedComponentNames = [componentName]
     if (recurseToChildren) {
@@ -887,13 +892,14 @@ export default class Core {
           let additionalDeleted = this.deleteFromComponentsToRender({
             componentName: child.componentName,
             recurseToChildren,
+            componentsWithChangedChildrenToRenderInProgress
           })
           deletedComponentNames.push(...additionalDeleted);
         }
       }
     }
     delete this.componentsToRender[componentName];
-    this.componentsWithChangedChildrenToRender.delete(componentName);
+    componentsWithChangedChildrenToRenderInProgress.delete(componentName);
 
     return deletedComponentNames;
   }
@@ -1183,10 +1189,10 @@ export default class Core {
     this.parameterStack.push();
     let sharedParameters = this.parameterStack.parameters;
 
-    if (componentClass.descendantCompositesMustHaveAReplacement) {
+    if (componentClass.descendantCompositesMustHaveAReplacement && !shadow) {
       sharedParameters.compositesMustHaveAReplacement = true;
       sharedParameters.compositesDefaultReplacementType = componentClass.descendantCompositesDefaultReplacementType;
-    } else if (componentClass.descendantCompositesMustHaveAReplacement === false) {
+    } else if (componentClass.descendantCompositesMustHaveAReplacement === false || shadow) {
       sharedParameters.compositesMustHaveAReplacement = false;
     }
 
@@ -1234,144 +1240,21 @@ export default class Core {
 
       if (componentClass.setUpVariant) {
 
-        let variantControlInd;
-        let variantControlChild;
-
-        // look for variantControl child
-        for (let [ind, child] of serializedChildren.entries()) {
-          if (child.componentType === "variantControl" || (
-            child.createdComponent && this._components[child.componentName].componentType === "variantControl"
-          )) {
-            variantControlInd = ind;
-            variantControlChild = child;
-            break;
-          }
-        }
-
-        let descendantVariantComponents = serializeFunctions.gatherVariantComponents({
+        let descendantVariantComponents = gatherVariantComponents({
           serializedComponents: serializedChildren,
           componentInfoObjects: this.componentInfoObjects,
         });
 
-        if (variantControlInd !== undefined) {
-          // if have desired variant name or index
-          // add that information to variantControl child
 
-          if (serializedComponent.variants) {
-            let desiredVariant = serializedComponent.variants.desiredVariant;
-            if (desiredVariant !== undefined) {
-              if (desiredVariant.index !== undefined) {
-                variantControlChild.variants = {
-                  desiredVariantIndex: desiredVariant.index
-                }
-              } else if (desiredVariant.name !== undefined) {
-                variantControlChild.variants = {
-                  desiredVariantName: desiredVariant.name
-                }
-              }
-            }
-
-            if (serializedComponent.variants.numberOfVariants === undefined) {
-              serializeFunctions.getNumberOfVariants({
-                serializedComponent,
-                componentInfoObjects: this.componentInfoObjects
-              });
-            }
-
-            if (serializedComponent.variants.uniqueVariants) {
-              sharedParameters.numberOfVariantsPreIgnore = serializedComponent.variants.numberOfVariantsPreIgnore;
-            }
-          }
-
-          // create variant control child
-          let childrenResult = await this.createIsolatedComponentsSub({
-            serializedComponents: [variantControlChild],
-            ancestors: ancestorsForChildren,
-            shadow,
-            createNameContext: "variantControl",
-            namespaceForUnamed,
-          });
-
-          definingChildren[variantControlInd] = childrenResult.components[0];
-
-
-          if (serializedComponent.variants.uniqueVariants && !serializedComponent.variants.selectedUniqueVariant) {
-
-            let result = componentClass.getUniqueVariant({
-              serializedComponent,
-              variantIndex: await childrenResult.components[0].stateValues.selectedVariantIndex,
-              componentInfoObjects: this.componentInfoObjects
-            })
-
-            if (result.success) {
-              serializedComponent.variants.desiredVariant = result.desiredVariant;
-            }
-
-          }
-
-        }
-
-        await componentClass.setUpVariant({
+        componentClass.setUpVariant({
           serializedComponent,
           sharedParameters,
-          definingChildrenSoFar: definingChildren,
           descendantVariantComponents
         });
 
-        if (componentClass.keepChildrenSerialized && variantControlInd === undefined) {
-          let childrenAddressed = new Set([]);
-
-          let keepSerializedInds = componentClass.keepChildrenSerialized({
-            serializedComponent,
-            componentInfoObjects: this.componentInfoObjects,
-          });
-
-          for (let ind of keepSerializedInds) {
-            if (childrenAddressed.has(Number(ind))) {
-              throw Error("Invalid instructions to keep children serialized from " + componentClass.componentType
-                + ": child repeated");
-            }
-            childrenAddressed.add(Number(ind));
-            childrenToRemainSerialized.push(serializedChildren[ind]);
-          }
-
-          // create any remaining children
-          let childrenToCreate = [];
-          for (let [ind, child] of serializedChildren.entries()) {
-            if (!(childrenAddressed.has(ind))) {
-              childrenToCreate.push(child)
-            }
-          }
-
-          if (childrenToCreate.length > 0) {
-            let childrenResult = await this.createIsolatedComponentsSub({
-              serializedComponents: childrenToCreate,
-              ancestors: ancestorsForChildren,
-              shadow,
-              namespaceForUnamed,
-            });
-
-            definingChildren = childrenResult.components;
-          }
-
-        } else {
-
-          let indicesToCreate = [...serializedChildren.keys()].filter(v => v !== variantControlInd);
-          let childrenToCreate = serializedChildren.filter((v, i) => i !== variantControlInd);
-
-          let childrenResult = await this.createIsolatedComponentsSub({
-            serializedComponents: childrenToCreate,
-            ancestors: ancestorsForChildren,
-            shadow,
-            namespaceForUnamed,
-          });
-
-          for (let [createInd, locationInd] of indicesToCreate.entries()) {
-            definingChildren[locationInd] = childrenResult.components[createInd];
-          }
-        }
-
-      } else if (componentClass.keepChildrenSerialized) {
+      }
+      
+      if (componentClass.keepChildrenSerialized) {
         let childrenAddressed = new Set([]);
 
         let keepSerializedInds = componentClass.keepChildrenSerialized({
@@ -1511,6 +1394,17 @@ export default class Core {
             shadowedComponent.shadowedBy = [];
           }
           shadowedComponent.shadowedBy.push(newComponent);
+
+          if (dep.isPrimaryShadow) {
+            shadowedComponent.primaryShadow = newComponent.componentName;
+
+            if (this.dependencies.updateTriggers.primaryShadowDependencies[name]) {
+              for (let dep of this.dependencies.updateTriggers.primaryShadowDependencies[name]) {
+                await dep.recalculateDownstreamComponents();
+              }
+            }
+
+          }
 
           break;
         }
@@ -2326,6 +2220,19 @@ export default class Core {
 
     }
 
+
+    let verificationResult = await verifyReplacementsMatchSpecifiedType({
+      component,
+      replacements: serializedReplacements,
+      assignNames: component.doenetAttributes.assignNames,
+      componentInfoObjects: this.componentInfoObjects,
+      compositeAttributesObj: component.constructor.createAttributesObject(),
+      flags: this.flags
+    });
+
+
+    serializedReplacements = verificationResult.replacements;
+
     // console.log(`serialized replacements for ${component.componentName} who is shadowing ${shadowedComposite.componentName}`);
     // console.log(deepClone(serializedReplacements));
 
@@ -2824,12 +2731,19 @@ export default class Core {
                 }]
               };
             } else {
-              // no component or primitive, so value is essential and give it the desired value
+              // no component or primitive, so value is essential and give it the desired value, but validated
+
+              let attributeValue = validateAttributeValue({
+                value: desiredStateVariableValues[varName],
+                attributeSpecification,
+                attribute: attrName
+              })
+
               return {
                 success: true,
                 instructions: [{
                   setEssentialValue: varName,
-                  value: desiredStateVariableValues[varName]
+                  value: attributeValue
                 }]
               };
             }
@@ -3196,12 +3110,17 @@ export default class Core {
                 }]
               };
             } else {
-              // no component or primitive, so value is essential and give it the desired value
+              // no component or primitive, so value is essential and give it the desired value, but validated
+              let attributeValue = validateAttributeValue({
+                value: desiredStateVariableValues[varName],
+                attributeSpecification,
+                attribute: attrName
+              })
               return {
                 success: true,
                 instructions: [{
                   setEssentialValue: varName,
-                  value: desiredStateVariableValues[varName]
+                  value: attributeValue
                 }]
               };
             }
@@ -6304,6 +6223,10 @@ export default class Core {
         }
       }
 
+      if (this.flags.autoSubmit && result.answerCreditPotentiallyChanged) {
+        this.recordAnswerToAutoSubmit(component.componentName);
+      }
+
     }
 
     for (let vName in varsChanged) {
@@ -6428,8 +6351,7 @@ export default class Core {
     //   indicating the mark stale process should recurse,
     //   but the variable should be marked to allow later mark stale
     //   processes that involve the variable to process the variable again
-    // - updateReplacements: set to true if need to update composite
-    //   replacements after marking this variable stale
+    // - other attributes that not processed in this function but returned
 
 
     let stateVarObj = component.state[varName];
@@ -6755,6 +6677,10 @@ export default class Core {
               for (let vName of result.updateDependencies) {
                 component.state[vName].needDependenciesUpdated = true;
               }
+            }
+
+            if (this.flags.autoSubmit && result.answerCreditPotentiallyChanged) {
+              this.recordAnswerToAutoSubmit(upDepComponent.componentName);
             }
 
           }
@@ -8187,6 +8113,7 @@ export default class Core {
         for (let aName in component.actions) {
           if (aName.toLowerCase() === actionNameLower) {
             action = component.actions[aName];
+            actionName = aName;
             break;
           }
         }
@@ -8262,6 +8189,9 @@ export default class Core {
     overrideReadOnly = false
   }) {
 
+    // Note: the transient flag is now ignored
+    // as the debounce is preventing too many updates from occurring
+
     if (this.flags.readOnly && !overrideReadOnly) {
 
       let sourceInformation = {};
@@ -8333,25 +8263,27 @@ export default class Core {
 
     if (this.flags.readOnly && !overrideReadOnly) {
 
-      let sourceInformation = {};
+      if (!canSkipUpdatingRenderer) {
+        let sourceInformation = {};
 
-      for (let instruction of updateInstructions) {
+        for (let instruction of updateInstructions) {
 
-        let componentSourceInformation = sourceInformation[instruction.componentName];
-        if (!componentSourceInformation) {
-          componentSourceInformation = sourceInformation[instruction.componentName] = {};
+          let componentSourceInformation = sourceInformation[instruction.componentName];
+          if (!componentSourceInformation) {
+            componentSourceInformation = sourceInformation[instruction.componentName] = {};
+          }
+
+          if (instruction.sourceInformation) {
+            Object.assign(componentSourceInformation, instruction.sourceInformation);
+          }
         }
 
-        if (instruction.sourceInformation) {
-          Object.assign(componentSourceInformation, instruction.sourceInformation);
-        }
+        await this.updateRendererInstructions({
+          componentNamesToUpdate: updateInstructions.map(x => x.componentName),
+          sourceOfUpdate: { sourceInformation },
+          actionId,
+        });
       }
-
-      await this.updateRendererInstructions({
-        componentNamesToUpdate: updateInstructions.map(x => x.componentName),
-        sourceOfUpdate: { sourceInformation },
-        actionId,
-      });
 
       return;
 
@@ -8418,6 +8350,10 @@ export default class Core {
 
       } else if (instruction.updateType === "recordItemSubmission") {
         recordItemSubmissions.push(instruction)
+      } else if (instruction.updateType === "setComponentNeedingUpdateValue") {
+        this.rendererState.__componentNeedingUpdateValue = instruction.componentName;
+      } else if (instruction.updateType === "unsetComponentNeedingUpdateValue") {
+        this.rendererState.__componentNeedingUpdateValue = null;
       }
 
     }
@@ -9265,7 +9201,7 @@ export default class Core {
       return;
     }
 
-    if (await component.stateValues.fixed && !instruction.overrideFixed) {
+    if (await component.stateValues.fixed && !instruction.overrideFixed && !stateVarObj.ignoreFixed) {
       console.log(`Changing ${stateVariable} of ${component.componentName} did not succeed because fixed is true.`);
       return;
     }
@@ -9549,7 +9485,7 @@ export default class Core {
               newStateVariableValues
             });
           }
-        } else if (dep.dependencyType === "attributeComponent") {
+        } else if (["attributeComponent", "shadowSource", "adapterSource", "targetComponent"].includes(dep.dependencyType)) {
           let cName = dep.downstreamComponentNames[0];
           let varName = dep.mappedDownstreamVariableNamesByComponent[0][newInstruction.variableIndex];
           if (!varName) {
@@ -9568,7 +9504,7 @@ export default class Core {
             workspace,
             newStateVariableValues
           });
-        } else if (["stateVariable", "parentStateVariable"].includes(dep.dependencyType)
+        } else if (["stateVariable", "parentStateVariable", "adapterSourceStateVariable", "sourceCompositeStateVariable"].includes(dep.dependencyType)
           && dep.downstreamComponentNames.length === 1
         ) {
 
@@ -9982,7 +9918,7 @@ export default class Core {
 
     axios.post('/api/saveCreditForItem.php', payload)
       .then(resp => {
-        console.log('>>>>saveCreditForItem resp', resp.data);
+        // console.log('>>>>saveCreditForItem resp', resp.data);
 
         if (resp.status === null) {
           postMessage({
@@ -10308,6 +10244,11 @@ export default class Core {
     // suspend visibility measuring so that remaining times collected are saved
     await this.suspendVisibilityMeasuring();
 
+    if (this.submitAnswersTimeout) {
+      clearTimeout(this.submitAnswersTimeout);
+      await this.autoSubmitAnswers();
+    }
+
     this.stopProcessingRequests = true;
 
     if (this.processing) {
@@ -10330,6 +10271,37 @@ export default class Core {
       await this.saveChangesToDatabase(true)
     }
 
+  }
+
+  recordAnswerToAutoSubmit(componentName) {
+    if (!this.answersToSubmit) {
+      this.answersToSubmit = [];
+    }
+
+    if (!this.answersToSubmit.includes(componentName)) {
+      this.answersToSubmit.push(componentName)
+    }
+
+
+    clearTimeout(this.submitAnswersTimeout);
+
+    //Debounce the submit answers
+    this.submitAnswersTimeout = setTimeout(() => {
+      this.autoSubmitAnswers();
+    }, 1000);
+  }
+
+  async autoSubmitAnswers() {
+
+    let toSubmit = this.answersToSubmit;
+    this.answersToSubmit = [];
+    for (let componentName of toSubmit) {
+      let component = this._components[componentName];
+
+      if (component.actions.submitAnswer) {
+        await this.requestAction({ componentName, actionName: "submitAnswer" });
+      }
+    }
   }
 
 }
@@ -10359,9 +10331,8 @@ function validateAttributeValue({ value, attributeSpecification, attribute }) {
 
   if (attributeSpecification.validValues) {
     if (!attributeSpecification.validValues.includes(value)) {
-      let firstValue = attributeSpecification.validValues[0]
-      console.warn(`Invalid value ${value} for attribute ${attribute}, using value ${firstValue}`);
-      value = firstValue;
+      console.warn(`Invalid value ${value} for attribute ${attribute}, using value ${attributeSpecification.defaultValue}`);
+      value = attributeSpecification.defaultValue;
     }
   } else if (attributeSpecification.clamp) {
     if (value < attributeSpecification.clamp[0]) {

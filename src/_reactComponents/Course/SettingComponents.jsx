@@ -14,18 +14,20 @@ import {
 import styled from 'styled-components';
 import { toastType, useToast } from '../../Tools/_framework/Toast';
 import { drivecardSelectedNodesAtom } from '../../Tools/_framework/ToolHandlers/CourseToolHandler';
+import { DateToDateString } from '../../_utils/dateUtilityFunction';
 import { useValidateEmail } from '../../_utils/hooks/useValidateEmail';
 import Button from '../PanelHeaderComponents/Button';
 import ButtonGroup from '../PanelHeaderComponents/ButtonGroup';
 import CheckboxButton from '../PanelHeaderComponents/Checkbox';
 import CollapseSection from '../PanelHeaderComponents/CollapseSection';
 import ColorImagePicker from '../PanelHeaderComponents/ColorImagePicker';
+import DateTime from '../PanelHeaderComponents/DateTime';
 import DropdownMenu from '../PanelHeaderComponents/DropdownMenu';
 import RelatedItems from '../PanelHeaderComponents/RelatedItems';
 import { RoleDropdown } from '../PanelHeaderComponents/RoleDropdown';
 import Textfield from '../PanelHeaderComponents/Textfield';
 import {
-  courseRolePermissonsByCourseIdRoleId,
+  courseRolePermissionsByCourseIdRoleId,
   courseRolesByCourseId,
   peopleByCourseId,
   useCourse,
@@ -57,7 +59,7 @@ const useSyncedTextfeildState = (syncCB, remoteValue = '') => {
         effectiveLabel = 'Untitled Course';
       }
       setLocalValue(effectiveLabel);
-      addToast('A Course must have a label.');
+      // addToast('A Course must have a label.');
     }
 
     if (remoteValue !== effectiveLabel) {
@@ -237,6 +239,7 @@ export function AddUserWithOptions({ courseId }) {
     <UserWithOptionsContainer>
       <Textfield
         label="First"
+        dataTest="First"
         width="250px"
         value={userData.firstName}
         onChange={(e) => {
@@ -246,6 +249,7 @@ export function AddUserWithOptions({ courseId }) {
       />
       <Textfield
         label="Last"
+        dataTest="Last"
         width="250px"
         value={userData.lastName}
         onChange={(e) => {
@@ -257,6 +261,7 @@ export function AddUserWithOptions({ courseId }) {
         <Button
           width="50px"
           value="Add User"
+          data-test="Add User"
           onClick={handleEmailChange}
           disabled={!isEmailValid}
           vertical
@@ -264,6 +269,7 @@ export function AddUserWithOptions({ courseId }) {
       </ButtonFlexContainer>
       <Textfield
         label="Email"
+        dataTest="Email"
         width="250px"
         value={emailInput}
         onChange={(e) => {
@@ -277,6 +283,7 @@ export function AddUserWithOptions({ courseId }) {
       />
       <Textfield
         label="Section"
+        dataTest="Section"
         width="250px"
         value={userData.section}
         onChange={(e) => {
@@ -286,6 +293,7 @@ export function AddUserWithOptions({ courseId }) {
       />
       <Textfield
         label="External Id"
+        dataTest="External Id"
         width="250px"
         value={userData.externalId}
         onChange={(e) => {
@@ -295,6 +303,7 @@ export function AddUserWithOptions({ courseId }) {
       />
       <DropdownMenu
         label="Role"
+        dataTest="role"
         width="190px"
         items={
           //TODO reduce to hide roles as needed
@@ -320,27 +329,27 @@ export function ManageUsers({ courseId, editable = false }) {
   const courseRolesRecoil = useRecoilValue(courseRolesByCourseId(courseId));
 
   const [selectedUserData, setSelectedUserData] = useState(null);
-  const [selectedUserPermissons, setSelectedUserPermissons] = useState(null);
+  const [selectedUserPermissions, setSelectedUserPermissions] = useState(null);
 
   const handleRoleChange = async () => {
     modifyUserRole(
       selectedUserData?.email,
-      selectedUserPermissons?.roleId,
+      selectedUserPermissions?.roleId,
       () => {
-        addToast(
-          `${selectedUserData.screenName} is now a ${selectedUserPermissons.roleLabel}`,
-        );
+        // addToast(
+        //   `${selectedUserData.screenName} is now a ${selectedUserPermissons.roleLabel}`,
+        // );
         //TODO set call for courseUsers
         setSelectedUserData((prev) => ({
           ...prev,
-          roleId: selectedUserPermissons.roleId,
-          roleLabel: selectedUserPermissons.roleLabel,
-          permissions: selectedUserPermissons,
+          roleId: selectedUserPermissions.roleId,
+          roleLabel: selectedUserPermissions.roleLabel,
+          permissions: selectedUserPermissions,
         }));
       },
       (err) => {
-        addToast(err, toastType.ERROR);
-        setSelectedUserPermissons(selectedUserData.permissons);
+        // addToast(err, toastType.ERROR);
+        setSelectedUserPermissions(selectedUserData.permissions);
       },
     );
   };
@@ -360,11 +369,11 @@ export function ManageUsers({ courseId, editable = false }) {
         }
         onChange={({ target: { value: idx } }) => {
           let user = courseUsersRecoil[idx];
-          let permissons =
+          let permissions =
             courseRolesRecoil?.find(({ roleId }) => roleId === user.roleId) ??
             {};
-          setSelectedUserData({ ...user, permissons });
-          setSelectedUserPermissons(permissons);
+          setSelectedUserData({ ...user, permissions });
+          setSelectedUserPermissions(permissions);
         }}
         vertical
       />
@@ -372,14 +381,14 @@ export function ManageUsers({ courseId, editable = false }) {
         label="Assigned Role"
         title=""
         onChange={({ value: selectedRoleId }) => {
-          setSelectedUserPermissons(
+          setSelectedUserPermissions(
             courseRolesRecoil?.find(
               ({ roleId }) => roleId === selectedRoleId,
             ) ?? null,
           );
         }}
-        valueRoleId={selectedUserPermissons?.roleId}
-        disabled={selectedUserData?.permissons?.isOwner === '1' || !editable}
+        valueRoleId={selectedUserPermissions?.roleId}
+        disabled={selectedUserData?.permissions?.isOwner === '1' || !editable}
         vertical
       />
       {editable && (
@@ -387,7 +396,7 @@ export function ManageUsers({ courseId, editable = false }) {
           width="menu"
           value="Assign Role"
           onClick={handleRoleChange}
-          disabled={selectedUserData?.permissons?.isOwner === '1'}
+          disabled={selectedUserData?.permissions?.isOwner === '1'}
         />
       )}
     </>
@@ -402,7 +411,7 @@ const useRolePermissionCheckbox = ({
   onClick,
 }) => {
   const recoilValue = useRecoilValueLoadable(
-    courseRolePermissonsByCourseIdRoleId(recoilKey),
+    courseRolePermissionsByCourseIdRoleId(recoilKey),
   ).getValue();
 
   const [checked, setChecked] = useState(false);
@@ -431,20 +440,20 @@ const useRolePermissionCheckbox = ({
   return { checked, disabled, onClick: clickFunction }, reset;
 };
 
-function RolePermissonCheckbox({
+function RolePermissionCheckbox({
   courseId,
   roleId,
-  permissonKey,
+  permissionKey,
   onClick,
   invert = false,
-  parentPermissonKey = '',
+  parentPermissionKey = '',
 }) {
   const {
-    [permissonKey]: recoilValue,
-    [parentPermissonKey]: overrideRecoilValue,
+    [permissionKey]: recoilValue,
+    [parentPermissionKey]: overrideRecoilValue,
     isOwner,
   } = useRecoilValueLoadable(
-    courseRolePermissonsByCourseIdRoleId({ courseId, roleId }),
+    courseRolePermissionsByCourseIdRoleId({ courseId, roleId }),
   ).getValue();
   const [localValue, setLocalValue] = useState('0');
 
@@ -468,7 +477,7 @@ function RolePermissonCheckbox({
             value: localValue,
             set: setLocalValue,
             event: e,
-            permissonKey,
+            permissionKey,
           });
           // let value = false;
           // if (!localValue) {
@@ -485,7 +494,7 @@ function RolePermissonCheckbox({
         }}
         disabled={overrideRecoilValue === '1' || isOwner === '1'}
       />
-      <CheckboxLabelText>{permissonKey}</CheckboxLabelText>
+      <CheckboxLabelText>{permissionKey}</CheckboxLabelText>
     </InputWrapper>
   );
 }
@@ -497,7 +506,7 @@ export function MangeRoles({ courseId }) {
   const [selectedRoleId, setSelectedRoleId] = useState(
     courseRolesRecoil[0].roleId,
   );
-  const [selectedRolePermissons, setSelectedRolePermissons] = useState(
+  const [selectedRolePermissions, setSelectedRolePermissions] = useState(
     courseRolesRecoil[0],
   );
   useEffect(() => {
@@ -505,18 +514,18 @@ export function MangeRoles({ courseId }) {
       ({ roleId }) => roleId === selectedRoleId,
     );
     if (permissions) {
-      setSelectedRolePermissons(permissions);
+      setSelectedRolePermissions(permissions);
     } else {
       setSelectedRoleId(courseRolesRecoil[0].roleId);
     }
   }, [courseRolesRecoil, selectedRoleId]);
 
-  const [permissonEdits, setPermissonEdits] = useState({});
+  const [permissionEdits, setPermissionEdits] = useState({});
   const [edited, setEdited] = useState(false);
   //   const [canViewContnetSourceProps, resetCanViewContnetSource] =
   //     useRolePermissionCheckbox({
   //       courseId,
-  //       roleId: selectedRolePermissons.roleId,
+  //       roleId: selectedRolePermissions.roleId,
   //       destructureFunction: ({
   //         ['canViewContentSource']: recoilValue,
   //         ['canEditContent']: overrideRecoilValue,
@@ -531,46 +540,46 @@ export function MangeRoles({ courseId }) {
 
   const handleSave = () => {
     modifyRolePermissions(
-      selectedRolePermissons.roleId,
-      permissonEdits,
+      selectedRolePermissions.roleId,
+      permissionEdits,
       () => {
         setEdited(false);
-        addToast(
-          `Permissions for ${
-            permissonEdits?.roleLabel ?? selectedRolePermissons.roleLabel
-          } updated successfully`,
-        );
+        // addToast(
+        //   `Permissions for ${
+        //     permissonEdits?.roleLabel ?? selectedRolePermissons.roleLabel
+        //   } updated successfully`,
+        // );
         setPermissonEdits({});
       },
       (error) => {
         setSelectedRolePermissons(selectedRolePermissons);
-        addToast(error, toastType.ERROR);
+        // addToast(error, toastType.ERROR);
       },
     );
   };
 
   const handleDelete = () => {
     modifyRolePermissions(
-      selectedRolePermissons.roleId,
+      selectedRolePermissions.roleId,
       { isDeleted: '1' },
       () => {
-        addToast(`${selectedRolePermissons.roleLabel} successfully deleted`);
+        // addToast(`${selectedRolePermissons.roleLabel} successfully deleted`);
         setEdited(false);
-        setPermissonEdits({});
+        setPermissionEdits({});
       },
       (error) => {
-        setSelectedRolePermissons(selectedRolePermissons);
+        setSelectedRolePermissions(selectedRolePermissions);
         addToast(error, toastType.ERROR);
       },
     );
   };
 
-  const handleCheckboxClick = ({ value, set, permissonKey }) => {
+  const handleCheckboxClick = ({ value, set, permissionKey }) => {
     let newValue = '0';
     if (value === '0') {
       newValue = '1';
     }
-    setPermissonEdits((prev) => ({ ...prev, [permissonKey]: newValue }));
+    setPermissionEdits((prev) => ({ ...prev, [permissionKey]: newValue }));
     set(newValue);
     if (!edited) {
       setEdited(true);
@@ -591,79 +600,85 @@ export function MangeRoles({ courseId }) {
       <Textfield
         label="Label"
         width="menu"
-        value={permissonEdits?.roleLabel ?? selectedRolePermissons.roleLabel}
+        value={permissionEdits?.roleLabel ?? selectedRolePermissions.roleLabel}
         vertical
         onChange={(e) => {
-          setPermissonEdits((prev) => ({ ...prev, roleLabel: e.target.value }));
+          setPermissionEdits((prev) => ({ ...prev, roleLabel: e.target.value }));
           if (!edited) {
             setEdited(true);
           }
         }}
-        disabled={selectedRolePermissons.isOwner === '1'}
+        disabled={selectedRolePermissions.isOwner === '1'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'isIncludedInGradebook'}
+        permissionKey={'isIncludedInGradebook'}
         invert
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canViewContentSource'}
-        parentPermissonKey={'canEditContent'}
+        permissionKey={'canViewContentSource'}
+        parentPermissionKey={'canEditContent'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canViewUnassignedContent'}
-        parentPermissonKey={'canEditContent'}
+        permissionKey={'canViewUnassignedContent'}
+        parentPermissionKey={'canEditContent'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canEditContent'}
+        permissionKey={'canEditContent'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canPublishContent'}
+        permissionKey={'canPublishContent'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canProctor'}
+        permissionKey={'canProctor'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canViewAndModifyGrades'}
+        permissionKey={'canViewAndModifyGrades'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canViewActivitySettings'}
-        parentPermissonKey={'canModifyActivitySettings'}
+        permissionKey={'canViewActivitySettings'}
+        parentPermissionKey={'canModifyActivitySettings'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canModifyActivitySettings'}
+        permissionKey={'canModifyActivitySettings'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canModifyCourseSettings'}
+        permissionKey={'canModifyCourseSettings'}
+      />
+      <RolePermissionCheckbox
+        courseId={courseId}
+        roleId={selectedRolePermissions.roleId}
+        onClick={handleCheckboxClick}
+        permissionKey={'canViewCourse'}
       />
       <DropdownMenu
         label="Data Access Level"
@@ -672,7 +687,7 @@ export function MangeRoles({ courseId }) {
           (value) => [value, value],
         )}
         onChange={({ value: dataAccessPermission }) => {
-          setPermissonEdits((prev) => ({ ...prev, dataAccessPermission }));
+          setPermissionEdits((prev) => ({ ...prev, dataAccessPermission }));
           if (!edited) {
             setEdited(true);
           }
@@ -681,33 +696,33 @@ export function MangeRoles({ courseId }) {
           ['None', 'Aggregated', 'Anonymized', 'Identified'].findIndex(
             (value) =>
               value ===
-              (permissonEdits?.dataAccessPermission ??
-                selectedRolePermissons.dataAccessPermission),
+              (permissionEdits?.dataAccessPermission ??
+                selectedRolePermissions.dataAccessPermission),
           ) + 1
         }
         vertical
-        disabled={selectedRolePermissons.isOwner === '1'}
+        disabled={selectedRolePermissions.isOwner === '1'}
         width="menu"
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canViewUsers'}
-        parentPermissonKey={'canManageUsers'}
+        permissionKey={'canViewUsers'}
+        parentPermissionKey={'canManageUsers'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'canManageUsers'}
-        parentPermissonKey={'isAdmin'}
+        permissionKey={'canManageUsers'}
+        parentPermissionKey={'isAdmin'}
       />
-      <RolePermissonCheckbox
+      <RolePermissionCheckbox
         courseId={courseId}
-        roleId={selectedRolePermissons.roleId}
+        roleId={selectedRolePermissions.roleId}
         onClick={handleCheckboxClick}
-        permissonKey={'isAdmin'}
+        permissionKey={'isAdmin'}
       />
       {edited && (
         <ButtonGroup vertical>
@@ -761,7 +776,7 @@ export function AddRole({ courseId }) {
 
   const handleSave = () => {
     modifyRolePermissions('', { roleLabel: `Role ${roles.length}` }, () => {
-      addToast(`Create a new role: Role ${roles.length}`);
+      // addToast(`Create a new role: Role ${roles.length}`);
     });
   };
 
@@ -787,7 +802,7 @@ export function DeleteCourse({ courseId }) {
   const handelDelete = () => {
     deleteCourse(() => {
       setCourseCardsSelection([]);
-      addToast(`${label} deleted`, toastType.SUCCESS);
+      // addToast(`${label} deleted`, toastType.SUCCESS);
     });
   };
 
@@ -801,6 +816,146 @@ export function DeleteCourse({ courseId }) {
         onKeyDown={(e) => {
           if (e.keyCode === 13) {
             handelDelete();
+          }
+        }}
+      />
+    </ButtonGroup>
+  );
+}
+
+export function DuplicateCourse({ courseId }) {
+  const addToast = useToast();
+  const { duplicateCourse, label } = useCourse(courseId);
+  const [showForm,setShowForm] = useState(false);
+  const [sourceDate,setSourceDate] = useState("");
+  const [newDate,setNewDate] = useState("");
+  const [newCourseLabel,setNewCourseLabel] = useState("");
+  // const setCourseCardsSelection = useSetRecoilState(drivecardSelectedNodesAtom);
+
+  let submitEnabled = false;
+  let dateDifference = 0;
+  if (newCourseLabel != "" &&
+  newDate != "" &&
+  sourceDate != ""
+  ){
+    submitEnabled = true;
+    let source = new Date(sourceDate);
+    let newD = new Date(newDate);
+    let timediff = newD.getTime() - source.getTime();
+    dateDifference = timediff / (1000 * 3600 * 24);
+  }
+  // console.log("submitEnabled",submitEnabled)
+  // console.log("sourceDate",sourceDate)
+  // console.log("newDate",newDate)
+  // console.log("newCourseLabel",newCourseLabel)
+  // console.log("dateDifference",dateDifference)
+
+
+  const handleDuplication = ({dateDifference,newLabel}) => {
+    duplicateCourse({dateDifference,newLabel},() => {
+      console.log("Duplication Success callback")
+      setShowForm(false);
+      // addToast(`${label} deleted`, toastType.SUCCESS);
+    });
+  };
+
+  if (showForm){
+    return (<>
+
+      <h2>Duplicate Course</h2>
+      <p>* - Required</p>
+      <Textfield 
+      dataTest="New Course Label Textfield"
+      vertical 
+      width="menu"
+      label="New Course's Label *" 
+      onChange={(e)=>{setNewCourseLabel(e.target.value)}} 
+      />
+      {/* <ColorImagePicker
+      // initialImage={image}
+      // initialColor={color}
+      imageCallback={(newImage) => {
+        console.log("newImage",newImage)
+        // modifyCourse({ image: newImage, color: 'none' });
+      }}
+      colorCallback={(newColor) => {
+        console.log("newColor",newColor)
+        // modifyCourse({ color: newColor, image: 'none' });
+      }}
+    /> */}
+      <p>Start Dates are used to adjust the new course's activity dates.</p>
+      <DateTime 
+      dataTest="Duplication Start Date"
+      offset="-10px"
+      width="menu" 
+      timePicker={false} 
+      vertical label="Source Course's Start Date *" 
+      onChange={({valid,value})=>{
+        if (valid){
+          let dateValue = DateToDateString(value._d);
+          setSourceDate(dateValue)
+        }else{
+          setSourceDate("")
+        }
+      }}
+      />
+      <DateTime 
+      dataTest="Duplication End Date"
+      offset="-10px"
+      width="menu" 
+      timePicker={false} 
+      vertical 
+      label="New Course's End Date *" 
+      onChange={({valid,value})=>{
+        if (valid){
+          let dateValue = DateToDateString(value._d);
+          setNewDate(dateValue)
+        }else{
+          setNewDate("")
+        }
+      }}
+      />
+      <br />
+      <br />
+      <ButtonGroup>
+        <Button
+          alert
+          width="100px"
+          value="Cancel"
+          onClick={()=>setShowForm(false)}
+          onKeyDown={(e) => {
+            if (e.keyCode === 13) {
+              setShowForm(false)
+            }
+          }}
+        />
+        <Button
+          dataTest="Duplicate Action"
+          width="100px"
+          value="Duplicate"
+          disabled={!submitEnabled}
+          onClick={()=>handleDuplication({dateDifference,newLabel:newCourseLabel})}
+          onKeyDown={(e) => {
+            if (e.keyCode === 13) {
+              handleDuplication({dateDifference,newLabel:newCourseLabel})
+            }
+          }}
+        />
+      </ButtonGroup>
+    </>
+    )
+  }
+
+  return (
+    <ButtonGroup vertical>
+      <Button
+        dataTest="Duplicate Course Button"
+        width="menu"
+        value="Duplicate Course"
+        onClick={()=>setShowForm(true)}
+        onKeyDown={(e) => {
+          if (e.keyCode === 13) {
+            setShowForm(true);
           }
         }}
       />

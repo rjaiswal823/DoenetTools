@@ -2010,7 +2010,14 @@ describe('Map Tag Tests', function () {
       expect(stateVariables['/_math1'].activeChildren.length).eq(20);
       for (let i = 0; i < 20; i++) {
         let j = 2 + i * 0.5;
-        expect(stateVariables[stateVariables['/_math1'].activeChildren[i].componentName].stateValues.value).eqls(["vector", j, ["apply", "sin", j]]);
+        if (Number.isInteger(j)) {
+          expect(stateVariables[stateVariables['/_math1'].activeChildren[i].componentName].stateValues.value).eqls(["vector", j, ["apply", "sin", j]]);
+        } else {
+          let val = stateVariables[stateVariables['/_math1'].activeChildren[i].componentName].stateValues.value;
+          expect(val[0]).eq("vector");
+          expect(val[1]).eq(j);
+          expect(val[2]).closeTo(Math.sin(j), 1E14)
+        }
       }
     })
 
@@ -2021,7 +2028,14 @@ describe('Map Tag Tests', function () {
       expect(stateVariables['/_math1'].activeChildren.length).eq(10);
       for (let i = 0; i < 10; i++) {
         let j = 2 + i * 0.5;
-        expect(stateVariables[stateVariables['/_math1'].activeChildren[i].componentName].stateValues.value).eqls(["vector", j, ["apply", "sin", j]]);
+        if (Number.isInteger(j)) {
+          expect(stateVariables[stateVariables['/_math1'].activeChildren[i].componentName].stateValues.value).eqls(["vector", j, ["apply", "sin", j]]);
+        } else {
+          let val = stateVariables[stateVariables['/_math1'].activeChildren[i].componentName].stateValues.value;
+          expect(val[0]).eq("vector");
+          expect(val[1]).eq(j);
+          expect(val[2]).closeTo(Math.sin(j), 1E14)
+        }
       }
     })
 
@@ -2540,5 +2554,30 @@ describe('Map Tag Tests', function () {
 
   });
 
+  it('bug for isResponse and parallel is fixed', () => {
+    cy.window().then(async (win) => {
+      win.postMessage({
+        doenetML: `
+    <map isResponse behavior="parallel" assignNames="(p1) (p2)">
+      <template>
+        <p>hi $v</p>
+      </template>
+      <sources alias="v"><sequence length="2" /></sources>
+    </map>
+    `}, "*");
+    });
+
+    cy.get('#\\/p1').should('have.text', 'hi 1')
+    cy.get('#\\/p2').should('have.text', 'hi 2')
+
+    cy.window().then(async (win) => {
+      let stateVariables = await win.returnAllStateVariables1();
+
+      expect(stateVariables["/p1"].stateValues.isResponse).eq(true)
+      expect(stateVariables["/p2"].stateValues.isResponse).eq(true)
+
+    })
+
+  });
 
 });

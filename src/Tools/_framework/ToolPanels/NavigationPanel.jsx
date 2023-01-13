@@ -16,6 +16,7 @@ import { effectivePermissionsByCourseId } from '../../../_reactComponents/PanelH
 import {
   itemByDoenetId,
   findFirstPageOfActivity,
+  coursePermissionsAndSettingsByCourseId,
 } from '../../../_reactComponents/Course/CourseActions';
 
 const movingGradient = keyframes`
@@ -71,7 +72,7 @@ const Td3Span = styled.span`
 `;
 
 export default function NavigationPanel() {
-  //TODO: swtich to effectivePermissons
+  //TODO: switch to effectivePermissions
   const courseId = useRecoilValue(searchParamAtomFamily('courseId'));
   const { canEditContent } = useRecoilValue(
     effectivePermissionsByCourseId(courseId),
@@ -151,7 +152,7 @@ export default function NavigationPanel() {
             //Find first page
             let pageDoenetId = findFirstPageOfActivity(clickedItem.content);
             if (pageDoenetId == null) {
-              addToast(`ERROR: No page found in activity`, toastType.INFO);
+              //addToast(`ERROR: No page found in activity`, toastType.INFO);
             } else {
               set(pageToolViewAtom, (prev) => {
                 return {
@@ -184,6 +185,12 @@ export default function NavigationPanel() {
         }
       },
   );
+
+  let course = useRecoilValue(coursePermissionsAndSettingsByCourseId(courseId));
+
+  if (course?.canViewCourse == '0'){
+    return <h1>No Access to view this page.</h1>
+  }
 
   return (
     <Suspense

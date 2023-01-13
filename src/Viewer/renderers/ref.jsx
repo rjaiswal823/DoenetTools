@@ -6,6 +6,41 @@ import { pageToolViewAtom } from '../../Tools/_framework/NewToolRoot';
 import { itemByDoenetId } from '../../_reactComponents/Course/CourseActions';
 import { scrollableContainerAtom } from '../PageViewer';
 import useDoenetRender from './useDoenetRenderer';
+import styled from 'styled-components';
+
+// const LinkStyling = styled.a`
+//     color: var(--mainBlue);
+//     border-radius: 5px;
+//     &: focus {
+//       outline: 2px solid var(--mainBlue);
+//     }
+//   `;
+
+const RefButton = styled.button `
+  position: relative;
+  height: 24px;
+  display: inline-block;
+  color: white;
+  color: ${(props) => (props.disabled ? 'var(--canvastext)' : 'var(--canvas)')};
+  background-color: ${(props) => (props.disabled ? 'var(--mainGray)' : 'var(--mainBlue)')};
+
+  padding: 2px;
+  border: none;
+  border-radius: var(--mainBorderRadius);
+  cursor: pointer;
+  cursor: ${(props) => (props.disabled ? 'not-allowed' : 'pointer')};
+  padding: 1px 6px 1px 6px;
+
+  &:hover {
+    background-color: ${(props) => (props.disabled ? 'var(--mainGray)' : 'var(--lightBlue)')};
+    color: ${(props) => (props.disabled ? 'var(--canvastext)' : 'var(--canvas)')};
+  };
+
+  &:focus {
+    outline: 2px solid var(--mainBlue);
+    outline-offset: 2px;
+  }
+`;
 
 export default React.memo(function Ref(props) {
   let { name, id, SVs, children } = useDoenetRender(props);
@@ -95,11 +130,11 @@ export default React.memo(function Ref(props) {
   if (SVs.createButton) {
     if (externalUri) {
       return <span id={id}><a name={id} />
-        <button id={id + "_button"} onClick={() => window.location.href = url} disabled={SVs.disabled}>{SVs.linkText}</button>
+        <RefButton id={id + "_button"} onClick={() => window.location.href = url} disabled={SVs.disabled}>{SVs.linkText}</RefButton>
       </span>;
     } else {
       return <span id={id}><a name={id} />
-        <button id={id + "_button"} onClick={() => navigate(url)} disabled={SVs.disabled}>{SVs.linkText}</button>
+        <RefButton id={id + "_button"} onClick={() => navigate(url)} disabled={SVs.disabled}>{SVs.linkText}</RefButton>
       </span>;
     }
     
@@ -109,13 +144,21 @@ export default React.memo(function Ref(props) {
       if (externalUri || url === "#") {
         // for some reason, if url = "#", the <Link>, below, causes a refresh
         // as it removes the # from the url.  So we use a <a> directly in this case.
-        return <a target={targetForATag} id={name} name={name} href={url}>{linkContent}</a>
+        console.log('first case');
+        return <a style={{color: 'var(--mainBlue)',
+          borderRadius: '5px'}} target={targetForATag} id={name} name={name} href={url} >{linkContent}</a>
+
       } else {
 
         let scrollAttribute = scrollableContainer === window ? "scrollY" : "scrollTop";
         let stateObj = { fromLink: true }
         Object.defineProperty(stateObj, 'previousScrollPosition', { get: () => scrollableContainer?.[scrollAttribute], enumerable: true });
-        return <Link target={targetForATag} id={id} name={id} to={url} state={stateObj}>{linkContent}</Link>
+        console.log('second case');
+        return <Link 
+        style={{color: 'var(--mainBlue)',
+        borderRadius: '5px'}}
+        target={targetForATag} id={id} name={id} to={url} state={stateObj} >{linkContent}</Link>
+
       }
     } else {
       return <span id={id}>{linkContent}</span>

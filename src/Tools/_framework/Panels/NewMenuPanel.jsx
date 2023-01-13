@@ -190,7 +190,9 @@ function SelectionMenu(props){
       backgroundColor: 'var(--canvas)',
       color:'var(--canvastext)',
       borderLeft:"8px solid var(--mainBlue)"
-      }}>
+      }}
+      data-test="Menu Panel"
+      >
         {/* <h3 style={{textAlign: "center", width: "240px", height: "35px",
  fontSize: "16px", marginTop: "5px", marginLeft: "-8px"}}>Current Selection</h3> */}
         {props.children}
@@ -272,6 +274,8 @@ const hideLinks = useRecoilValue(searchParamAtomFamily('hideLinks'));
     EditorInfoCap:lazy(() => import('../MenuPanelCaps/EditorInfoCap')),
     AssignmentInfoCap:lazy(() => import('../MenuPanelCaps/AssignmentInfoCap')),
     DraftActivityCap:lazy(() => import('../MenuPanelCaps/DraftActivityCap')),
+    ContentInfoCap:lazy(() => import('../MenuPanelCaps/ContentInfoCap')),
+    
   }).current;
 
   const LazyMenuObj = useRef({
@@ -305,6 +309,7 @@ const hideLinks = useRecoilValue(searchParamAtomFamily('hideLinks'));
     GroupSettings:lazy(() => import('../Menus/GroupSettings')),
     TimerMenu:lazy(() => import('../Menus/TimerMenu')),
     CreditAchieved:lazy(() => import('../Menus/CreditAchieved')),
+    ActivityDates:lazy(() => import('../Menus/ActivityDates')),
     ClassTimes:lazy(() => import('../Menus/ClassTimes')),
     CurrentContent:lazy(() => import('../Menus/CurrentContent')),
     ManageUsersMenu:lazy(() => import('../Menus/ManageUsersMenu'))

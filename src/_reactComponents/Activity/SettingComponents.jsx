@@ -46,6 +46,7 @@ const InputControl = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: calc(var(--menuWidth) - 10px);
 `;
 
 const initializingWorkersAtom = atomFamily({
@@ -75,7 +76,7 @@ export const AssignUnassignActivity = ({ doenetId, courseId }) => {
 
   let assignButton = <ActionButton
     width="menu"
-    data-test="Assign Activity"
+    dataTest="Assign Activity"
     value={assignActivityText}
     onClick={async () => {
       if (pageId) {
@@ -93,7 +94,7 @@ export const AssignUnassignActivity = ({ doenetId, courseId }) => {
         doenetId,
         isAssigned: true,
         successCallback: () => {
-          addToast(assignActivityToast, toastType.INFO);
+          //addToast(assignActivityToast, toastType.INFO);
         },
       });
     }}
@@ -105,7 +106,7 @@ export const AssignUnassignActivity = ({ doenetId, courseId }) => {
   if (isAssigned) {
     unAssignButton = <ActionButton
       width="menu"
-      data-test="Unassign Activity"
+      dataTest="Unassign Activity"
       value="Unassign Activity"
       alert
       onClick={() => {
@@ -113,7 +114,7 @@ export const AssignUnassignActivity = ({ doenetId, courseId }) => {
           doenetId,
           isAssigned: false,
           successCallback: () => {
-            addToast('Activity Unassigned', toastType.INFO);
+           // addToast('Activity Unassigned', toastType.INFO);
           },
         });
       }}
@@ -122,7 +123,7 @@ export const AssignUnassignActivity = ({ doenetId, courseId }) => {
     if (initializingWorker) {
       prerenderButton = <ActionButton
         width="menu"
-        data-test="Cancel prerendering"
+        dataTest="Cancel prerendering"
         value={`${initializeStatus} (Cancel)`}
         onClick={() => {
           initializingWorker.terminate();
@@ -165,7 +166,7 @@ export const AssignUnassignActivity = ({ doenetId, courseId }) => {
 
       prerenderButton = <ActionButton
         width="menu"
-        data-test="Prerender activity"
+        dataTest="Prerender activity"
         value="Prerender activity"
         onClick={initializePrerender}
       />
@@ -227,6 +228,7 @@ export const AssignedDate = ({ doenetId, courseId, editable = false }) => {
           }}
         />
         <DateTime
+          width='176px'
           disabled={assignedDate === null || assignedDate === undefined}
           value={assignedDate ? new Date(assignedDate) : null}
           dataTest="Assigned Date"
@@ -318,6 +320,7 @@ export const DueDate = ({ courseId, doenetId }) => {
         />
 
         <DateTime
+          width='176px'
           disabled={dueDate === null || dueDate === undefined}
           value={dueDate ? new Date(dueDate) : null}
           dataTest="Due Date"
@@ -368,11 +371,10 @@ export const TimeLimit = ({ courseId, doenetId }) => {
     value: { timeLimit: recoilValue },
     updateAssignmentSettings,
   } = useActivity(courseId, doenetId);
-  const [timeLimit, setTimeLimit] = useState();
+  
+  const [timeLimit, setTimeLimit] = useState(recoilValue);
+  const [isEnabled, setIsEnabled] = useState(recoilValue ? true : false)
 
-  useEffect(() => {
-    setTimeLimit(recoilValue);
-  }, [recoilValue]);
   return (
     <InputWrapper>
       <LabelText>Time Limit in Minutes</LabelText>
@@ -380,49 +382,43 @@ export const TimeLimit = ({ courseId, doenetId }) => {
         <Checkbox
           style={{ marginRight: '5px' }}
           dataTest="Time Limit Checkbox"
-          checked={timeLimit !== null}
+          checked={isEnabled}
           onClick={() => {
-            let valueDescription = 'Not Limited';
+            let valueDescription = 'Not Limited' ;
             let value = null;
-            if (timeLimit === null) {
-              valueDescription = '60 Minutes';
+            let enable = false;
+            if (!isEnabled) {
+              valueDescription = 60 + ' Minutes';
               value = 60;
+              enable = true;
             }
             setTimeLimit(value);
+            setIsEnabled(enable)
             updateAssignmentSettings({
               keyToUpdate: 'timeLimit',
               value,
               description: 'Time Limit ',
-              valueDescription,
+              valueDescription
             });
           }}
         />
         <Increment
-          disabled={timeLimit === null}
+          disabled={!isEnabled}
           value={timeLimit}
           dataTest="Time Limit"
-          min={0}
-          onBlur={() => {
-            if (recoilValue !== timeLimit) {
-              let timelimitlocal = null;
-              if (timeLimit < 0 || timeLimit === '' || isNaN(timeLimit)) {
-                setTimeLimit(0);
-                timelimitlocal = 0;
-              } else {
-                timelimitlocal = parseInt(timeLimit);
-                setTimeLimit(parseInt(timeLimit));
-              }
-              let valueDescription = `${timelimitlocal} Minutes`;
-
-              updateAssignmentSettings({
-                keyToUpdate: 'timeLimit',
-                value: timelimitlocal,
-                description: 'Time Limit',
-                valueDescription,
-              });
-            }
+          min={1}
+          width='180px'
+          onBlur={limit => {
+            if (isNaN(limit) || limit < 1) limit = 1
+            setTimeLimit(parseInt(limit))
+            updateAssignmentSettings({
+              keyToUpdate: 'timeLimit',
+              value: parseInt(limit),
+              description: 'Time Limit',
+              valueDescription: `${limit} Minutes`
+            });
           }}
-          onChange={(newValue) => setTimeLimit(newValue)}
+          onChange={limit => setTimeLimit(parseInt(limit))}
         />
       </InputControl>
     </InputWrapper>
@@ -435,12 +431,8 @@ export const AttemptLimit = ({ courseId, doenetId }) => {
     updateAssignmentSettings,
   } = useActivity(courseId, doenetId);
 
-  const [numberOfAttemptsAllowed, setNumberOfAttemptsAllowed] =
-    useState(recoilValue);
-
-  useEffect(() => {
-    setNumberOfAttemptsAllowed(recoilValue);
-  }, [recoilValue]);
+  const [numberOfAttemptsAllowed, setNumberOfAttemptsAllowed] = useState(recoilValue);
+  const [isEnabled, setIsEnabled] = useState(recoilValue ? true : false)
 
   return (
     <InputWrapper>
@@ -449,15 +441,18 @@ export const AttemptLimit = ({ courseId, doenetId }) => {
         <Checkbox
           style={{ marginRight: '5px' }}
           dataTest="Attempt Limit Checkbox"
-          checked={numberOfAttemptsAllowed !== null}
+          checked={isEnabled}
           onClick={() => {
             let valueDescription = 'Not Limited';
             let value = null;
-            if (numberOfAttemptsAllowed === null) {
+            let enable = false;
+            if (!isEnabled) {
               valueDescription = '1';
               value = 1;
+              enable = true;
             }
             setNumberOfAttemptsAllowed(value);
+            setIsEnabled(enable)
             updateAssignmentSettings({
               keyToUpdate: 'numberOfAttemptsAllowed',
               value,
@@ -467,34 +462,21 @@ export const AttemptLimit = ({ courseId, doenetId }) => {
           }}
         />
         <Increment
-          disabled={numberOfAttemptsAllowed === null}
+          disabled={!isEnabled}
           value={numberOfAttemptsAllowed}
           dataTest="Attempt Limit"
-          min={0}
-          onBlur={() => {
-            if (recoilValue !== numberOfAttemptsAllowed) {
-              let numberOfAttemptsAllowedLocal = 1;
-              if (
-                numberOfAttemptsAllowed <= 0 ||
-                numberOfAttemptsAllowed === '' ||
-                isNaN(numberOfAttemptsAllowed)
-              ) {
-                setNumberOfAttemptsAllowed(numberOfAttemptsAllowedLocal);
-              } else {
-                numberOfAttemptsAllowedLocal = parseInt(
-                  numberOfAttemptsAllowed,
-                );
-                setNumberOfAttemptsAllowed(numberOfAttemptsAllowedLocal);
-              }
-
-              updateAssignmentSettings({
-                keyToUpdate: 'numberOfAttemptsAllowed',
-                value: numberOfAttemptsAllowedLocal,
-                description: 'Attempts Allowed',
-              });
-            }
+          width='180px'
+          min={1}
+          onBlur={attempts => {
+            if (isNaN(attempts) || attempts < 1) attempts = 1
+            setNumberOfAttemptsAllowed(parseInt(attempts))
+            updateAssignmentSettings({
+              keyToUpdate: 'numberOfAttemptsAllowed',
+              value: parseInt(attempts),
+              description: 'Attempts Allowed',
+            });
           }}
-          onChange={(newValue) => setNumberOfAttemptsAllowed(newValue)}
+          onChange={attempts => setNumberOfAttemptsAllowed(parseInt(attempts))}
         />
       </InputControl>
     </InputWrapper>
@@ -516,6 +498,7 @@ export const AttemptAggregation = ({ courseId, doenetId }) => {
       <LabelText>Attempt Aggregation</LabelText>
       <InputControl>
         <DropdownMenu
+          dataTest="Attempt Aggregation"
           width="menu"
           valueIndex={attemptAggregation === 'm' ? 1 : 2}
           items={[
@@ -558,21 +541,22 @@ export const TotalPointsOrPercent = ({ courseId, doenetId }) => {
       <InputControl>
         <Increment
           value={totalPointsOrPercent}
+          // value={totalPointsOrPercent || 0}
           dataTest='Total Points Or Percent'
           min={0}
-          onBlur={() => {
-            if (recoilValue !== totalPointsOrPercent) {
+          onBlur={(newValue) => {
+            if (newValue !== recoilValue) {
               let totalPointsOrPercentLocal = null;
               if (
-                totalPointsOrPercent < 0 ||
-                totalPointsOrPercent === '' ||
-                isNaN(totalPointsOrPercent)
+                newValue < 0 ||
+                newValue === '' ||
+                isNaN(newValue)
               ) {
                 setTotalPointsOrPercent(0);
                 totalPointsOrPercentLocal = 0;
               } else {
-                totalPointsOrPercentLocal = parseFloat(totalPointsOrPercent);
-                setTotalPointsOrPercent(parseFloat(totalPointsOrPercent));
+                totalPointsOrPercentLocal = parseFloat(newValue);
+                setTotalPointsOrPercent(parseFloat(newValue));
               }
 
               updateAssignmentSettings(doenetId, {
@@ -604,6 +588,7 @@ export const GradeCategory = ({ courseId, doenetId }) => {
     <InputWrapper>
       <LabelText>Grade Category</LabelText>
       <DropdownMenu
+        defaultIndex={"7"}
         valueIndex={
           {
             gateway: 1,
@@ -612,6 +597,7 @@ export const GradeCategory = ({ courseId, doenetId }) => {
             'problem sets': 4,
             projects: 5,
             participation: 6,
+            'No Category': 7,
           }[gradeCategory]
         }
         items={[
@@ -621,6 +607,7 @@ export const GradeCategory = ({ courseId, doenetId }) => {
           ['problem sets', 'Problem Sets'],
           ['projects', 'Projects'],
           ['participation', 'Participation'],
+          ['NULL', 'No Category'],
         ]}
         dataTest="Grade Category"
         onChange={({ value: val }) => {
@@ -657,7 +644,7 @@ export const ItemWeights = ({ courseId, doenetId }) => {
         vertical
         width="menu"
         value={textValue}
-        data-test="Item Weights"
+        dataTest="Item Weights"
         onChange={(e) => {
           setTextValue(e.target.value);
         }}
@@ -901,6 +888,18 @@ export const ShowDoenetMLSource = ({ courseId, doenetId }) => {
   );
 };
 
+export const CanViewAfterCompleted = ({ courseId, doenetId }) => {
+  return (
+    <CheckedSetting
+      courseId={courseId}
+      doenetId={doenetId}
+      keyToUpdate="canViewAfterCompleted"
+      description="Can View After Completed"
+      dataTest="Can View After Completed"
+    />
+  );
+};
+
 export const ProctorMakesAvailable = ({ courseId, doenetId }) => {
   return (
     <CheckedSetting
@@ -909,6 +908,18 @@ export const ProctorMakesAvailable = ({ courseId, doenetId }) => {
       keyToUpdate="proctorMakesAvailable"
       description="Proctor Makes Available"
       dataTest="Proctor Makes Available"
+    />
+  );
+};
+
+export const AutoSubmit = ({ courseId, doenetId }) => {
+  return (
+    <CheckedSetting
+      courseId={courseId}
+      doenetId={doenetId}
+      keyToUpdate="autoSubmit"
+      description="Auto Submit"
+      dataTest="Auto Submit"
     />
   );
 };
@@ -943,6 +954,7 @@ export const PinAssignment = ({ courseId, doenetId }) => {
           checkedIcon={<FontAwesomeIcon icon={faCalendarPlus} />}
           uncheckedIcon={<FontAwesomeIcon icon={faCalendarTimes} />}
           checked={pinnedUntilDate !== null && pinnedUntilDate !== undefined}
+          dataTest="Pin Assignment Checkbox"
           onClick={() => {
             let valueDescription = 'None';
             let value = null;
@@ -974,6 +986,8 @@ export const PinAssignment = ({ courseId, doenetId }) => {
         />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <DateTime
+            width='176px'
+            dataTest="Pinned After Date"
             disabled={pinnedAfterDate === null || pinnedAfterDate === undefined}
             disabledText="No Pinned After Date"
             disabledOnClick={() => {
@@ -1030,6 +1044,8 @@ export const PinAssignment = ({ courseId, doenetId }) => {
           />
 
           <DateTime
+            width='176px'
+            dataTest="Pinned Until Date"
             style={{ marginTop: '5px' }}
             disabled={pinnedUntilDate === null || pinnedUntilDate === undefined}
             disabledText="No Pinned Until Date"

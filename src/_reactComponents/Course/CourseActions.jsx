@@ -101,16 +101,26 @@ export const fileByPageId = atomFamily({
 
 const peopleAtomByCourseId = atomFamily({
   key:"peopleAtomByCourseId",
-  default:[],
-  effects:courseId => [ ({setSelf, trigger})=>{
-    if (trigger == 'get' && courseId){
-      axios.get('/api/loadCoursePeople.php', { params: { courseId } })
-      .then(resp=>{
-        setSelf(resp.data.peopleArray)
-      })
-    } 
-  },
-  ]
+  default: selectorFamily({
+    key: 'peopleAtomByCourseId/Default',
+    get: (courseId) => async () => {
+      const {data} = await axios.get('/api/loadCoursePeople.php', { params: { courseId } });
+      if(data.success) {
+        return data.peopleArray;
+      }
+      return []
+    }
+  }),
+  // effects:courseId => [ ({setSelf, trigger})=>{
+  //   if (trigger == 'get'){
+  //     axios.get('/api/loadCoursePeople.php', { params: { courseId } })
+  //     .then(resp=>{
+  //       console.log('here3',resp.data.peopleArray)
+  //       setSelf(resp.data.peopleArray)
+  //     })
+  //   } 
+  // },
+  // ]
 })
 
 export const peopleByCourseId = selectorFamily({
@@ -186,7 +196,6 @@ export const peopleByCourseId = selectorFamily({
       }
     
     })
-
     return {
       value:get(peopleAtomByCourseId(courseId)),
       recoilWithdraw,
@@ -554,6 +563,7 @@ export const authorCourseItemOrderByCourseIdBySection = selectorFamily({
   }
 })
 
+//TODO: this should work with permission instead of splitting by author/student
 export const studentCourseItemOrderByCourseId = selectorFamily({
   key: 'studentCourseItemOrderByCourseId',
   get:(courseId)=> ({get})=>{
@@ -699,17 +709,17 @@ const unfilteredCourseRolesByCourseId = atomFamily({
 export const courseRolesByCourseId = selectorFamily({
   key: 'filteredCourseRolesByCourseId',
   get: courseId => ({get}) => {
-    const permissonsAndSettings = get(coursePermissionsAndSettingsByCourseId(courseId));
+    const permissionsAndSettings = get(coursePermissionsAndSettingsByCourseId(courseId));
     const roles = get(unfilteredCourseRolesByCourseId(courseId));
 
-    const ignoreKeys = ['isIncludedInGradebook', 'sectionPermissonOnly', 'dataAccessPermission', 'roleId', 'roleLabel'];
+    const ignoreKeys = ['isIncludedInGradebook', 'sectionPermissionOnly', 'dataAccessPermission', 'roleId', 'roleLabel'];
     let filteredRoles = roles?.filter((role) => {
       let valid = 
-        role.roleId === permissonsAndSettings.roleId 
+        role.roleId === permissionsAndSettings.roleId 
         || !Object.keys(role).every((permKey) => (
-              (role[permKey] ?? '0') === permissonsAndSettings[permKey] 
+              (role[permKey] ?? '0') === permissionsAndSettings[permKey] 
               || ignoreKeys.includes(permKey) 
-              ||  (role[permKey] ?? '0') === '1' && permissonsAndSettings[permKey] === '0'
+              ||  (role[permKey] ?? '0') === '1' && permissionsAndSettings[permKey] === '0'
           ))
       return (valid)
     }) ?? [];
@@ -717,7 +727,7 @@ export const courseRolesByCourseId = selectorFamily({
   }
 })
 
-export const courseRolePermissonsByCourseIdRoleId = selectorFamily({
+export const courseRolePermissionsByCourseIdRoleId = selectorFamily({
   key: 'courseRoleByCourseIdRoleId',
   get: ({courseId, roleId}) => ({get}) => {
     return get(unfilteredCourseRolesByCourseId(courseId))?.find(({roleId: candidateRoleId}) => candidateRoleId === roleId) ?? {};
@@ -807,8 +817,8 @@ function findContentsChildIds(content){
 }
 
 export const useCourse = (courseId) => {
-  const { label, color, image, defaultRoleId } = useRecoilValue(
-    coursePermissionsAndSettingsByCourseId(courseId),
+  const { label, color, image, defaultRoleId, canAutoEnroll } = useRecoilValue(
+    coursePermissionsAndSettingsByCourseId(courseId)
   );
   const addToast = useToast();
 
@@ -1116,8 +1126,10 @@ export const useCourse = (courseId) => {
             paginate: true,
             showFinishButton: false,
             proctorMakesAvailable: false,
+            autoSubmit: false,
             pinnedAfterDate: null,
             pinnedUntilDate: null,
+            canViewAfterCompleted: '1',
             ...data.itemEntered,
           }
           set(itemByDoenetId(createdActivityDoenentId), newActivityObj);
@@ -1568,7 +1580,7 @@ export const useCourse = (courseId) => {
             actionType, 
             roleId: serverRoleId,
             updatedPermissions
-        }} = await axios.post('/api/updateRolePermissons.php', {
+        }} = await axios.post('/api/updateRolePermissions.php', {
               courseId, 
               roleId, 
               permissions: {...newPermissions, label: newPermissions?.roleLabel}
@@ -1615,6 +1627,27 @@ export const useCourse = (courseId) => {
             set(coursePermissionsAndSettings, (prev) =>
               prev.filter((c) => c.courseId !== courseId),
             );
+            successCallback?.();
+          } else {
+            throw new Error(`response code: ${resp.status}`);
+          }
+        } catch (err) {
+          failureCallback(err.message);
+        }
+      },
+    [courseId, defaultFailure],
+  );
+
+  const duplicateCourse = useRecoilCallback(
+    ({ set }) =>
+      async ({dateDifference,newLabel},successCallback,failureCallback=defaultFailure) => {
+        // console.log("DUPLICATE COURSE",courseId)
+        // console.log({dateDifference,newLabel,successCallback,failureCallback})
+        try {
+          let resp = await axios.post('/api/duplicateCourse.php', { courseId, dateDifference, newLabel });
+          // console.log("resp",resp.data)
+          if (resp.status < 300) {
+            set(coursePermissionsAndSettings, resp.data.permissionsAndSettings);
             successCallback?.();
           } else {
             throw new Error(`response code: ${resp.status}`);
@@ -2187,7 +2220,19 @@ export const useCourse = (courseId) => {
           pageLinksToDelete,
           labels,
         });
-        // console.log("createAndDeletePageLinks",data)
+        // console.log("updateCreateAndDeletePageLinks",data)
+
+        //update page link labels
+        for (let [i,linkPageDoenetId] of Object.entries(data.linkPagesDoenetIds)){
+          let nextLabel = data.nextLabels[i];
+          set(itemByDoenetId(linkPageDoenetId),(prev)=>{
+            let next = {...prev}
+            next.timeOfLastUpdate = timeOfLastUpdate;
+            next.label = nextLabel;
+            return next
+          });
+
+        }
 
         //recoil new page links
         //Build sourceToPageLink as we go through
@@ -2264,13 +2309,12 @@ export const useCourse = (courseId) => {
           courseId,
           pages,
         });
-        // console.log("updateContentLinksToSources data",data)
         if (data.success){
-          for (let pageDoenetId of pages){
-        
+          for (let [i,pageDoenetId] of Object.entries(pages)){
             set(itemByDoenetId(pageDoenetId),(prev)=>{
               let next = {...prev}
               next.timeOfLastUpdate = timeOfLastUpdate;
+              next.label = data.nextLabels[i];
               return next
             })
           }
@@ -3227,9 +3271,11 @@ export const useCourse = (courseId) => {
     color, 
     image,
     defaultRoleId,
+    canAutoEnroll,
     create, 
     deleteItem, 
     deleteCourse, 
+    duplicateCourse,
     modifyCourse, 
     modifyRolePermissions,
     renameItem, 

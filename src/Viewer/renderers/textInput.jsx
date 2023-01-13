@@ -15,11 +15,11 @@ const Button = styled.button `
   display: inline-block;
   color: white;
   background-color: var(--mainBlue);
-  /* padding: 2px; */
+  padding: 2px;
   /* border: var(--mainBorder); */
   border: none;
   border-radius: var(--mainBorderRadius);
-  margin: 0px 12px 12px 0px;
+  margin: 0px 4px 4px 0px;
 
   &:hover {
     background-color: var(--lightBlue);
@@ -31,7 +31,8 @@ const TextArea = styled.textarea `
   width: ${props => props.textAreaWidth};
   height: ${props => props.textAreaHeight}; // Same height as the checkWorkButton, accounting for the borders
   font-size: 14px;
-  border: ${props => props.surroundingBorder}; // Turns blue on focus
+  border: ${props => props.disabled ? '2px solid var(--mainGray)' : 'var(--mainBorder)'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'auto'};
 
   &:focus {
     outline: var(--mainBorder);
@@ -43,7 +44,8 @@ const Input = styled.input `
   width: ${props => props.inputWidth}px;
   height: 20px; // Same height as the checkWorkButton, accounting for the borders
   font-size: 14px;
-  border: ${props => props.surroundingBorder}; // Turns blue on focus
+  border: ${props => props.disabled ? '2px solid var(--mainGray)' : 'var(--mainBorder)'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'auto'};
 
   &:focus {
     outline: var(--mainBorder);
@@ -100,7 +102,7 @@ export default function TextInput(props) {
         baseVariableValue: rendererValue,
       });
 
-      if (SVs.includeCheckWork && validationState === "unvalidated") {
+      if (SVs.includeCheckWork && !SVs.suppressCheckwork && validationState === "unvalidated") {
         callAction({
           action: actions.submitAnswer,
         })
@@ -178,23 +180,21 @@ export default function TextInput(props) {
 
   const inputKey = id + '_input';
 
-  // textInput turns blue when focused, otherwise maintains the main border
-  let surroundingBorder = getComputedStyle(document.documentElement).getPropertyValue("--mainBorder");
+  let checkWorkStyle = {
+    cursor: 'pointer',
+    padding: '1px 6px 1px 6px',
+  }
+
+  if (disabled) {
+    checkWorkStyle.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue("--mainGray");
+    checkWorkStyle.cursor = 'not-allowed';
+    checkWorkStyle.color = 'black';
+  }
 
   // Assume we don't have a check work button
   let checkWorkButton = null;
-  if (SVs.includeCheckWork) {
-
-    let checkWorkStyle = {
-      cursor: 'pointer',
-    }
-
+  if (SVs.includeCheckWork && !SVs.suppressCheckwork) {
     if (validationState === "unvalidated") {
-      if (disabled) {
-        checkWorkStyle.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue("--mainGray");
-      } else {
-        checkWorkStyle.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue("--mainBlue");
-      }
       checkWorkButton = 
       <Button
         id={id + '_submit'}
@@ -212,7 +212,7 @@ export default function TextInput(props) {
           }
         }}
       >
-        <FontAwesomeIcon style={{marginRight: "4px", paddingLeft: "2px"}} icon={faLevelDownAlt} transform={{ rotate: 90 }} />
+        <FontAwesomeIcon style={{ /*marginRight: "4px", paddingLeft: "2px"*/ }} icon={faLevelDownAlt} transform={{ rotate: 90 }} />
       </Button>
     } else {
       if (SVs.showCorrectness) {
@@ -229,7 +229,7 @@ export default function TextInput(props) {
           //partial credit
           let percent = Math.round(SVs.creditAchieved * 100);
           let partialCreditContents = `${percent} %`;
-          checkWorkStyle.width = "50px";
+          checkWorkStyle.width = '44px';
 
           checkWorkStyle.backgroundColor = "#efab34";
           checkWorkButton = 
@@ -253,6 +253,7 @@ export default function TextInput(props) {
       } else {
         // showCorrectness is false
         checkWorkStyle.backgroundColor = "rgb(74, 3, 217)";
+        checkWorkStyle.padding = "1px 8px 1px 4px"; // To center the faCloud icon
         checkWorkButton = 
           <Button
             id={id + '_saved'}
@@ -301,8 +302,7 @@ export default function TextInput(props) {
       onFocus={handleFocus}
       textAreaWidth={textAreaWidth}
       textAreaHeight={textAreaHeight}
-      surroundingBorder={surroundingBorder}
-      style={{margin: "0px 12px 12px 0px"}}
+      style={{margin: "0px 4px 4px 4px"}}
 
     />
   } else {
@@ -317,8 +317,7 @@ export default function TextInput(props) {
       onBlur={handleBlur}
       onFocus={handleFocus}
       inputWidth={inputWidth}
-      surroundingBorder={surroundingBorder}
-      style={{margin: "0px 12px 12px 0px"}}
+      style={{margin: "0px 4px 4px 4px"}}
     />
   }
 

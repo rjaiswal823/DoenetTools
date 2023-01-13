@@ -20,6 +20,7 @@ import {
   faChartPie,
   faTasks,
 } from '@fortawesome/free-solid-svg-icons';
+import { coursePermissionsAndSettingsByCourseId } from '../../../_reactComponents/Course/CourseActions';
 
 export default function Dashboard(props) {
   const setPageToolView = useSetRecoilState(pageToolViewAtom);
@@ -38,6 +39,13 @@ export default function Dashboard(props) {
     setSuppressMenus(canModifyCourseSettings === '1' ? [] : ['ClassTimes']);
   }, [canModifyCourseSettings, setSuppressMenus]);
 
+
+  let course = useRecoilValue(coursePermissionsAndSettingsByCourseId(courseId));
+
+  if (course?.canViewCourse == '0'){
+    return <h1>No Access to view this page.</h1>
+  }
+
   return (
     <div style={props?.style ?? {}}>
       <div style={{ marginLeft: '10px', marginRight: '10px' }}>
@@ -52,6 +60,7 @@ export default function Dashboard(props) {
           }}
         >
           <Card
+            dataTest="Dashboard Content Card"
             name="Content"
             icon={<FontAwesomeIcon icon={faCode} />}
             value="Content"
@@ -64,6 +73,7 @@ export default function Dashboard(props) {
           />
           {canManageUsers === '1' ? (
             <Card
+              dataTest="Dashboard People Card"
               name="People"
               icon={<FontAwesomeIcon icon={faUser} />}
               value="People"
@@ -79,6 +89,7 @@ export default function Dashboard(props) {
           ) : null}
           {(dataAccessPermission ?? 'None') !== 'None' ? (
             <Card
+            dataTest="Dashboard Data Card"
               name="Data"
               icon={<FontAwesomeIcon icon={faChartPie} />}
               value="Data"
@@ -94,7 +105,8 @@ export default function Dashboard(props) {
           ) : null}
           {canViewAndModifyGrades === '1' ? (
             <Card
-              name="Gradebook"
+            dataTest="Dashboard Gradebook Card"
+            name="Gradebook"
               icon={<FontAwesomeIcon icon={faTasks} />}
               value="Gradebook"
               onClick={() =>

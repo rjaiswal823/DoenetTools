@@ -13,7 +13,7 @@ import { selectedMenuPanelAtom } from '../Panels/NewMenuPanel';
 import { drivecardSelectedNodesAtom } from '../ToolHandlers/CourseToolHandler';
 import { pageToolViewAtom } from '../NewToolRoot';
 import DriveCard from '../../../_reactComponents/Drive/DoenetDriveCard';
-import { coursePermissionsAndSettings } from '../../../_reactComponents/Course/CourseActions';
+import { courseIdAtom, coursePermissionsAndSettings } from '../../../_reactComponents/Course/CourseActions';
 import { mainPanelClickAtom } from '../Panels/NewMainPanel';
 import useMedia from './useMedia';
 import './driveCardsStyle.css';
@@ -54,10 +54,12 @@ export default function CourseCards(props) {
     return null;
   }
 
+  let filteredCourses = courses.filter((course)=>course.canViewCourse != '0')
+
   return (
     <div style={props.style}>
      <CourseCardWrapper
-          courses={courses}
+          courses={filteredCourses}
           drivePathSyncKey="main"
           types={['course']}
           isOneDriveSelect={false}
@@ -127,7 +129,10 @@ const CourseCardWrapper = (props) => {
     set(selectedMenuPanelAtom, 'SelectedCourse');
   });
 
+  let tempSetDeleteMe = useSetRecoilState(courseIdAtom);
+
   const handleSelect = (e, item) => {
+    tempSetDeleteMe(item.courseId);
     setPageToolView({
       page: 'course',
       tool: 'dashboard',

@@ -11,6 +11,7 @@ import { drivecardSelectedNodesAtom } from '../ToolHandlers/CourseToolHandler';
 
 import {
   DeleteCourse,
+  DuplicateCourse,
   EditImageAndColor,
   EditLabel,
 } from '../../../_reactComponents/Course/SettingComponents';
@@ -36,7 +37,7 @@ export default function SelectedCourse() {
     courseCardsSelection.length > 1 &&
     courseCardsSelection[0]?.isOwner
   ) {
-    //should be aware of all course permissons
+    //should be aware of all course permissions
     return (
       <>
         <h2> {courseCardsSelection.length} Courses Selected</h2>
@@ -89,7 +90,7 @@ const CourseInfoPanel = function ({ courseId }) {
         <ActionButton
           width="menu"
           value="Enter Course"
-          data-test="Enter Course nav button"
+          dataTest="Enter Course nav button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -165,6 +166,7 @@ const CourseInfoPanel = function ({ courseId }) {
       )}
       <br />
       {isOwner === '1' && <DeleteCourse courseId={courseId} />}
+      {isOwner === '1' && <DuplicateCourse courseId={courseId} />}
     </>
   );
 };

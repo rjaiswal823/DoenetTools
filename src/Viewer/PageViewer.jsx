@@ -341,7 +341,7 @@ export default function PageViewer(props) {
     }
   }
 
-  function forceRendererState({ rendererState, forceDisable, forceShowCorrectness, forceShowSolution }) {
+  function forceRendererState({ rendererState, forceDisable, forceShowCorrectness, forceShowSolution, forceUnsuppressCheckwork }) {
     for (let componentName in rendererState) {
       let stateValues = rendererState[componentName].stateValues;
       if (forceDisable && stateValues.disabled === false) {
@@ -349,6 +349,9 @@ export default function PageViewer(props) {
       }
       if (forceShowCorrectness && stateValues.showCorrectness === false) {
         stateValues.showCorrectness = true;
+      }
+      if (forceUnsuppressCheckwork && stateValues.suppressCheckwork === true) {
+        stateValues.suppressCheckwork = false;
       }
       if (forceShowSolution && rendererState[componentName].childrenInstructions?.length > 0) {
         // look for a child that has a componentType solution
@@ -368,7 +371,8 @@ export default function PageViewer(props) {
   function initializeRenderers(args) {
 
     if (args.rendererState) {
-      if (props.forceDisable || props.forceShowCorrectness || props.forceShowSolution) {
+      delete args.rendererState.__componentNeedingUpdateValue;
+      if (props.forceDisable || props.forceShowCorrectness || props.forceShowSolution || props.forceUnsuppressCheckwork) {
         forceRendererState({ rendererState: args.rendererState, ...props })
       }
       for (let componentName in args.rendererState) {
@@ -387,7 +391,6 @@ export default function PageViewer(props) {
       props.generatedVariantCallback(
         JSON.parse(coreInfo.current.generatedVariantString, serializedComponentsReviver),
         coreInfo.current.allPossibleVariants,
-        coreInfo.current.variantIndicesToIgnore
       );
     }
 
@@ -598,6 +601,14 @@ export default function PageViewer(props) {
 
         }
 
+        if (localInfo.rendererState.__componentNeedingUpdateValue) {
+          callAction({
+            action: {
+              actionName: "updateValue",
+              componentName: localInfo.rendererState.__componentNeedingUpdateValue
+            }
+          })
+        }
 
         initializeRenderers({
           rendererState: localInfo.rendererState,
@@ -636,6 +647,7 @@ export default function PageViewer(props) {
           solutionDisplayMode: props.flags.solutionDisplayMode,
           showFeedback: props.flags.showFeedback,
           showHints: props.flags.showHints,
+          autoSubmit: props.flags.autoSubmit,
         }
       }
 
@@ -659,8 +671,19 @@ export default function PageViewer(props) {
 
           let coreInfo = JSON.parse(resp.data.coreInfo, serializedComponentsReviver);
 
+          let rendererState = JSON.parse(resp.data.rendererState, serializedComponentsReviver);
+
+          if (rendererState.__componentNeedingUpdateValue) {
+            callAction({
+              action: {
+                actionName: "updateValue",
+                componentName: rendererState.__componentNeedingUpdateValue
+              }
+            })
+          }
+
           initializeRenderers({
-            rendererState: JSON.parse(resp.data.rendererState, serializedComponentsReviver),
+            rendererState,
             coreInfo,
           });
 
@@ -922,6 +945,7 @@ export default function PageViewer(props) {
     }
     setStage('recalcParams')
     coreId.current = nanoid();
+    initialCoreData.current = {};
     setPageContentChanged(true);
     return null;
   }
